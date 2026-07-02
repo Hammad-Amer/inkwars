@@ -1,0 +1,5 @@
+# Install PyTorch FIRST with the CUDA index (see README.md):
+#   pip install torch --index-url https://download.pytorch.org/whl/cu126
+numpy
+onnx
+onnxruntime

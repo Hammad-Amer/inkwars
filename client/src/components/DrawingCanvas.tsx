@@ -1,0 +1,103 @@
+import { useEffect, useRef } from 'react'
+import type { Stroke, StrokePoint } from '../lib/strokes'
+import './DrawingCanvas.css'
+
+interface DrawingCanvasProps {
+  /** Called after every completed stroke and on clear, with all strokes so far. */
+  onStrokesChange: (strokes: Stroke[]) => void
+  /** Called continuously while a stroke is being drawn (throttled by the parent). */
+  onDrawing?: (strokes: Stroke[]) => void
+  /** Incrementing this prop clears the canvas. */
+  clearToken?: number
+}
+
+/**
+ * Pointer-drawn canvas that records vector strokes (points + timestamps).
+ * Rendering is fully imperative — React only manages mount/unmount — so
+ * drawing stays smooth regardless of what the rest of the UI is doing.
+ */
+export default function DrawingCanvas({ onStrokesChange, onDrawing, clearToken }: DrawingCanvasProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const strokesRef = useRef<Stroke[]>([])
+  const currentRef = useRef<Stroke | null>(null)
+  const startTimeRef = useRef(0)
+  const callbacksRef = useRef({ onStrokesChange, onDrawing })
+  callbacksRef.current = { onStrokesChange, onDrawing }
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas || clearToken === undefined) return
+    strokesRef.current = []
+    currentRef.current = null
+    startTimeRef.current = 0
+    canvas.getContext('2d')!.clearRect(0, 0, canvas.width, canvas.height)
+    callbacksRef.current.onStrokesChange([])
+  }, [clearToken])
+
+  useEffect(() => {
+    const canvas = canvasRef.current!
+    const ctx = canvas.getContext('2d')!
+    // Match the backing store to the CSS size once; the canvas is fixed-size.
+    const dpr = window.devicePixelRatio || 1
+    const rect = canvas.getBoundingClientRect()
+    canvas.width = rect.width * dpr
+    canvas.height = rect.height * dpr
+    ctx.scale(dpr, dpr)
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    ctx.lineWidth = 3.5
+    ctx.strokeStyle = '#141414'
+
+    const toPoint = (e: PointerEvent): StrokePoint => {
+      const r = canvas.getBoundingClientRect()
+      if (startTimeRef.current === 0) startTimeRef.current = performance.now()
+      return { x: e.clientX - r.left, y: e.clientY - r.top, t: performance.now() - startTimeRef.current }
+    }
+
+    const onPointerDown = (e: PointerEvent) => {
+      if (e.button !== 0) return
+      canvas.setPointerCapture(e.pointerId)
+      const p = toPoint(e)
+      currentRef.current = [p]
+      ctx.beginPath()
+      ctx.moveTo(p.x, p.y)
+      // dot for a tap
+      ctx.lineTo(p.x + 0.01, p.y)
+      ctx.stroke()
+    }
+
+    const onPointerMove = (e: PointerEvent) => {
+      const stroke = currentRef.current
+      if (!stroke) return
+      const p = toPoint(e)
+      const prev = stroke[stroke.length - 1]
+      stroke.push(p)
+      ctx.beginPath()
+      ctx.moveTo(prev.x, prev.y)
+      ctx.lineTo(p.x, p.y)
+      ctx.stroke()
+      callbacksRef.current.onDrawing?.([...strokesRef.current, stroke])
+    }
+
+    const onPointerUp = () => {
+      const stroke = currentRef.current
+      if (!stroke) return
+      currentRef.current = null
+      strokesRef.current = [...strokesRef.current, stroke]
+      callbacksRef.current.onStrokesChange(strokesRef.current)
+    }
+
+    canvas.addEventListener('pointerdown', onPointerDown)
+    canvas.addEventListener('pointermove', onPointerMove)
+    canvas.addEventListener('pointerup', onPointerUp)
+    canvas.addEventListener('pointercancel', onPointerUp)
+    return () => {
+      canvas.removeEventListener('pointerdown', onPointerDown)
+      canvas.removeEventListener('pointermove', onPointerMove)
+      canvas.removeEventListener('pointerup', onPointerUp)
+      canvas.removeEventListener('pointercancel', onPointerUp)
+    }
+  }, [])
+
+  return <canvas ref={canvasRef} className="drawing-canvas" />
+}

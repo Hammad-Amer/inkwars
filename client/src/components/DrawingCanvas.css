@@ -1,0 +1,11 @@
+.drawing-canvas {
+  width: 100%;
+  aspect-ratio: 1;
+  display: block;
+  background: var(--paper-raised);
+  border: var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-press);
+  cursor: crosshair;
+  touch-action: none; /* let pointer events own touch input */
+}

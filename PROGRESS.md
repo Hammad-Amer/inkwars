@@ -40,22 +40,37 @@ custom CNN trained on Quick Draw running client-side, commentary runs in-browser
 
 ## Current State — what works right now
 
-- `client/` — Vite + React + TS app. Landing page with design identity at `/`.
-  Run: `cd client && npm install && npm run dev`
+- `client/` — Vite + React + TS app. Landing page at `/`; `/model-test` page draws + runs the
+  guesser (shows a "No model yet" state until export). Run: `cd client && npm run dev`
 - `server/` — Express 5 skeleton with `GET /health` only (game server arrives Phase 2/3).
-  Run: `cd server && npm install && npm run dev`
-- `training/` — see Phase 1 section of this file once built.
+  Run: `cd server && npm run dev`
+- `training/` — full pipeline: `download_data.py` (HTTP-Range partial downloads, ~2 GB total),
+  `train.py` (CNN in `model.py`, AMP, `--smoke` flag), `export_onnx.py` (exports + verifies +
+  installs into `client/public/model/`). All 100 category names validated against the official
+  list; download URLs HEAD-checked.
+- **Verified end-to-end** on 2026-07-02 with a CPU smoke model (2 categories, 1 epoch):
+  download → train → ONNX export (matches PyTorch to 2.6e-08) → headless-Chromium draw test on
+  `/model-test` returned live guesses with zero console errors. Smoke artifacts were deleted
+  afterwards (placeholders don't get committed); the user's real training regenerates them.
+- `training/venv/` exists with CPU-only torch (from verification). `training/data/` already has
+  apple + banana.
+- Playwright + Chromium installed (`client` devDep) for browser-driving verification — reuse it
+  in later phases.
 
 ## Next Immediate Step
 
-Finish Phase 1 session work: training pipeline (`training/`) + `/model-test` page, then the
-**user** runs training on their 4060 (PyTorch install → smoke run → full run → export), then
-validate the model in the browser test page together.
+**User action:** install CUDA torch and train for real — follow `training/README.md`
+(install cu126 torch into the existing venv → `train.py --smoke` to confirm GPU → download all
+categories → full `train.py` → `export_onnx.py`). Then validate guess quality together on
+`/model-test` and tune preprocessing if needed. After that: commit the exported model, mark
+Phase 1 done, and start Phase 2 (single-player core loop).
 
 ## Open Questions / Unsure About
 
-- Exact Quick Draw rasterization parameters (stroke width when rendering 28×28) need empirical
-  validation on the test page — browser preprocessing must match training data distribution.
+- Browser rasterization was matched empirically to the dataset (centered, ~25/28 max-dim,
+  ~1.3px strokes — verified against real apple.npy statistics), but real-model guess quality on
+  human drawings still needs eyeballing once training completes; stroke width / margins may
+  need a tweak.
 - Deployment target: deliberately deferred until Phase 10 (per brief, ask user then).
 
 ## Decisions Already Made — do NOT re-litigate
@@ -71,4 +86,6 @@ validate the model in the browser test page together.
 ## Session Log
 
 - **2026-07-02** — Phase 0 complete (repo, git, client/server scaffolds, design tokens).
-  Phase 1 started: training pipeline + model-test page.
+  Phase 1 built and smoke-verified end-to-end (training pipeline, ONNX export, `/model-test`
+  page with live browser-verified guessing). Remaining for Phase 1: the user's real GPU
+  training run + guess-quality validation.
