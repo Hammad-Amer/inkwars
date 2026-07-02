@@ -28,7 +28,7 @@ custom CNN trained on Quick Draw running client-side, commentary runs in-browser
 
 - [x] **Phase 0 — Setup & alignment** (repo, git, scaffolding, this file)
 - [x] **Phase 1 — Train & validate the AI guesser** (87.6% top-1 / 96.6% top-5 val; browser-verified)
-- [ ] **Phase 2 — Single-player core loop** ← IN PROGRESS
+- [x] **Phase 2 — Single-player core loop** (awaiting user playtest feedback)
 - [ ] Phase 3 — Multiplayer (rooms, Socket.io, AI as participant)
 - [ ] Phase 4 — Chaos modifiers
 - [ ] Phase 5 — Replay system (vector strokes)
@@ -59,14 +59,28 @@ custom CNN trained on Quick Draw running client-side, commentary runs in-browser
 
 ## Next Immediate Step
 
-Phase 2 — single-player core loop (user gave go-ahead to proceed autonomously after training):
-`/play` page where a prompt is shown, the player draws it, the AI guesses live with a
-human-like thinking delay, and speed-based scoring works across a multi-round match.
+**User playtests Phase 2** (`cd client && npm run dev` → `/play`): does the AI's guessing
+cadence feel like a player? Is 60s/5-rounds right? Tune the knobs at the top of
+`client/src/lib/aiPlayer.ts` based on feedback. Then, on the user's "go": Phase 3
+(multiplayer — rooms, Socket.io, AI as a participant in the shared guess feed).
+
+## Phase 2 notes (what was built)
+
+- `/play`: 5-round match, difficulty ramps easy→hard (`lib/prompts.ts` — MATCH_TIERS,
+  TIER_POINTS). Speed scoring: `tierBase * (0.25 + 0.75 * timeLeftFraction)`, rounded to 5s.
+- `lib/aiPlayer.ts`: the AI as a believable player — 3.5s before its first guess, ≥1.6s + jitter
+  between guesses, never repeats itself, confidence threshold decays 0.45→0.12 over the round
+  (wilder shots as time runs out). It never sees the prompt; the game judges correctness.
+- Round flow: reducer state machine (intro → drawing → round-end → match-end); give-up button;
+  round-end panel lingers 900ms so the winning guess lands visibly.
+- Browser-verified end-to-end: drew "sun", AI called it at ~4s, +95 pts awarded, give-up path
+  and match summary all exercised, no real console errors (one benign ORT wasm-streaming
+  fallback warning in dev).
 
 ## Open Questions / Unsure About
 
-- AI guess cadence/threshold values (how often it guesses, confidence gating, thinking delay)
-  are game-feel numbers — need the user's playtest feedback in Phase 2.
+- AI guess cadence/threshold values (`aiPlayer.ts` knobs) are game-feel numbers — need the
+  user's playtest verdict.
 - Deployment target: deliberately deferred until Phase 10 (per brief, ask user then).
 
 ## Decisions Already Made — do NOT re-litigate
@@ -88,3 +102,6 @@ human-like thinking delay, and speed-based scoring works across a multi-round ma
   and browser-validated 5/5. Fixes along the way: pip>=23 needed for the PyTorch index,
   `onnxscript` needed by torch 2.12's exporter, UTF-8 stdout on Windows, single-file ONNX
   export. Phase 2 started on the user's go-ahead.
+- **2026-07-02 (later still)** — Phase 2 built and browser-verified: `/play` single-player loop
+  (AI player module, 5-round matches, speed scoring, round/match panels). Stopped here per the
+  one-phase rule; Phase 3 awaits the user's go.

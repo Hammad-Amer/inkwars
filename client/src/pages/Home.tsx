@@ -4,7 +4,7 @@ import './Home.css'
 export default function Home() {
   return (
     <main className="home">
-      <p className="home-kicker hand-note">round one: prove the robot can see</p>
+      <p className="home-kicker hand-note">the robot can see. now beat it.</p>
       <h1 className="home-title">
         Drawing
         <br />
@@ -17,11 +17,16 @@ export default function Home() {
       </p>
       <p className="home-blurb">
         A real-time drawing-and-guessing game where an AI watches the canvas and guesses alongside
-        you. Multiplayer arrives in a later phase — right now, the AI guesser is in training.
+        you. Draw the secret word — the faster the AI recognizes it, the more you score.
       </p>
-      <Link to="/model-test" className="home-cta">
-        Open the model test lab →
-      </Link>
+      <div className="home-actions">
+        <Link to="/play" className="home-cta home-cta-primary">
+          Play →
+        </Link>
+        <Link to="/model-test" className="home-cta">
+          Model test lab
+        </Link>
+      </div>
     </main>
   )
 }

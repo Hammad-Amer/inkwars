@@ -1,0 +1,78 @@
+.guess-feed {
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-press);
+  padding: 1rem;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+}
+
+.guess-feed-title {
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  color: var(--ai);
+}
+
+.guess-feed-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--ai);
+  animation: guess-feed-blink 1.6s ease-in-out infinite;
+}
+
+@keyframes guess-feed-blink {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+.guess-feed-empty {
+  margin: 0;
+}
+
+.guess-feed-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  overflow-y: auto;
+}
+
+.guess-feed-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.4rem 0.6rem;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius);
+  font-weight: 700;
+  animation: guess-feed-pop 180ms ease-out;
+}
+
+@keyframes guess-feed-pop {
+  from {
+    transform: translateY(-4px);
+    opacity: 0;
+  }
+}
+
+.guess-feed-item.is-correct {
+  border: var(--border);
+  background: var(--acid);
+  text-transform: uppercase;
+}
+
+.guess-feed-at {
+  font-family: var(--font-mono);
+  font-weight: 400;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}

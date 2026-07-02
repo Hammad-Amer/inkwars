@@ -9,6 +9,8 @@ interface DrawingCanvasProps {
   onDrawing?: (strokes: Stroke[]) => void
   /** Incrementing this prop clears the canvas. */
   clearToken?: number
+  /** When true, pointer input is ignored (e.g. between rounds). */
+  disabled?: boolean
 }
 
 /**
@@ -16,13 +18,20 @@ interface DrawingCanvasProps {
  * Rendering is fully imperative — React only manages mount/unmount — so
  * drawing stays smooth regardless of what the rest of the UI is doing.
  */
-export default function DrawingCanvas({ onStrokesChange, onDrawing, clearToken }: DrawingCanvasProps) {
+export default function DrawingCanvas({
+  onStrokesChange,
+  onDrawing,
+  clearToken,
+  disabled = false,
+}: DrawingCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const strokesRef = useRef<Stroke[]>([])
   const currentRef = useRef<Stroke | null>(null)
   const startTimeRef = useRef(0)
   const callbacksRef = useRef({ onStrokesChange, onDrawing })
   callbacksRef.current = { onStrokesChange, onDrawing }
+  const disabledRef = useRef(disabled)
+  disabledRef.current = disabled
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -55,7 +64,7 @@ export default function DrawingCanvas({ onStrokesChange, onDrawing, clearToken }
     }
 
     const onPointerDown = (e: PointerEvent) => {
-      if (e.button !== 0) return
+      if (e.button !== 0 || disabledRef.current) return
       canvas.setPointerCapture(e.pointerId)
       const p = toPoint(e)
       currentRef.current = [p]
@@ -99,5 +108,5 @@ export default function DrawingCanvas({ onStrokesChange, onDrawing, clearToken }
     }
   }, [])
 
-  return <canvas ref={canvasRef} className="drawing-canvas" />
+  return <canvas ref={canvasRef} className={`drawing-canvas${disabled ? ' is-disabled' : ''}`} />
 }

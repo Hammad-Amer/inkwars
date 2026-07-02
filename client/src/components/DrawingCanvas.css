@@ -9,3 +9,8 @@
   cursor: crosshair;
   touch-action: none; /* let pointer events own touch input */
 }
+
+.drawing-canvas.is-disabled {
+  cursor: default;
+  opacity: 0.85;
+}

@@ -4,9 +4,11 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import './index.css'
 import Home from './pages/Home'
 import ModelTest from './pages/ModelTest'
+import Play from './pages/Play'
 
 const router = createBrowserRouter([
   { path: '/', element: <Home /> },
+  { path: '/play', element: <Play /> },
   { path: '/model-test', element: <ModelTest /> },
 ])
 

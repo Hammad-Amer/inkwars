@@ -46,6 +46,17 @@
   color: var(--ink-soft);
 }
 
+.home-actions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.home-cta-primary {
+  background: var(--acid);
+  font-size: 1.15rem;
+}
+
 .home-cta {
   display: inline-block;
   font-weight: 700;
