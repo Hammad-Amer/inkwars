@@ -13,8 +13,13 @@ Usage:
 from __future__ import annotations
 
 import json
+import sys
 from datetime import date
 from pathlib import Path
+
+# torch's exporter prints emoji; Windows consoles default to cp1252 and crash
+sys.stdout.reconfigure(encoding="utf-8")
+sys.stderr.reconfigure(encoding="utf-8")
 
 import numpy as np
 import onnxruntime
@@ -49,6 +54,9 @@ def main() -> None:
         output_names=["logits"],
         dynamic_axes={"drawing": {0: "batch"}, "logits": {0: "batch"}},
         opset_version=OPSET,
+        # keep weights inside the .onnx file — ORT-web can't auto-fetch
+        # a sibling .onnx.data file in the browser
+        external_data=False,
     )
 
     # sanity check: ONNX Runtime must agree with PyTorch

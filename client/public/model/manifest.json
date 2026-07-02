@@ -1,0 +1,409 @@
+{
+  "modelFile": "quickdraw.onnx",
+  "inputSize": 28,
+  "categories": [
+    {
+      "name": "apple",
+      "tier": "easy"
+    },
+    {
+      "name": "banana",
+      "tier": "easy"
+    },
+    {
+      "name": "sun",
+      "tier": "easy"
+    },
+    {
+      "name": "moon",
+      "tier": "easy"
+    },
+    {
+      "name": "star",
+      "tier": "easy"
+    },
+    {
+      "name": "cloud",
+      "tier": "easy"
+    },
+    {
+      "name": "tree",
+      "tier": "easy"
+    },
+    {
+      "name": "flower",
+      "tier": "easy"
+    },
+    {
+      "name": "house",
+      "tier": "easy"
+    },
+    {
+      "name": "bird",
+      "tier": "easy"
+    },
+    {
+      "name": "fish",
+      "tier": "easy"
+    },
+    {
+      "name": "cat",
+      "tier": "easy"
+    },
+    {
+      "name": "car",
+      "tier": "easy"
+    },
+    {
+      "name": "eye",
+      "tier": "easy"
+    },
+    {
+      "name": "smiley face",
+      "tier": "easy"
+    },
+    {
+      "name": "pizza",
+      "tier": "easy"
+    },
+    {
+      "name": "ice cream",
+      "tier": "easy"
+    },
+    {
+      "name": "donut",
+      "tier": "easy"
+    },
+    {
+      "name": "cup",
+      "tier": "easy"
+    },
+    {
+      "name": "clock",
+      "tier": "easy"
+    },
+    {
+      "name": "key",
+      "tier": "easy"
+    },
+    {
+      "name": "door",
+      "tier": "easy"
+    },
+    {
+      "name": "chair",
+      "tier": "easy"
+    },
+    {
+      "name": "book",
+      "tier": "easy"
+    },
+    {
+      "name": "pencil",
+      "tier": "easy"
+    },
+    {
+      "name": "umbrella",
+      "tier": "easy"
+    },
+    {
+      "name": "hat",
+      "tier": "easy"
+    },
+    {
+      "name": "shoe",
+      "tier": "easy"
+    },
+    {
+      "name": "candle",
+      "tier": "easy"
+    },
+    {
+      "name": "rainbow",
+      "tier": "easy"
+    },
+    {
+      "name": "airplane",
+      "tier": "medium"
+    },
+    {
+      "name": "bicycle",
+      "tier": "medium"
+    },
+    {
+      "name": "bus",
+      "tier": "medium"
+    },
+    {
+      "name": "train",
+      "tier": "medium"
+    },
+    {
+      "name": "truck",
+      "tier": "medium"
+    },
+    {
+      "name": "helicopter",
+      "tier": "medium"
+    },
+    {
+      "name": "sailboat",
+      "tier": "medium"
+    },
+    {
+      "name": "lighthouse",
+      "tier": "medium"
+    },
+    {
+      "name": "bridge",
+      "tier": "medium"
+    },
+    {
+      "name": "castle",
+      "tier": "medium"
+    },
+    {
+      "name": "tent",
+      "tier": "medium"
+    },
+    {
+      "name": "windmill",
+      "tier": "medium"
+    },
+    {
+      "name": "campfire",
+      "tier": "medium"
+    },
+    {
+      "name": "mountain",
+      "tier": "medium"
+    },
+    {
+      "name": "cactus",
+      "tier": "medium"
+    },
+    {
+      "name": "mushroom",
+      "tier": "medium"
+    },
+    {
+      "name": "palm tree",
+      "tier": "medium"
+    },
+    {
+      "name": "snowman",
+      "tier": "medium"
+    },
+    {
+      "name": "snowflake",
+      "tier": "medium"
+    },
+    {
+      "name": "lightning",
+      "tier": "medium"
+    },
+    {
+      "name": "butterfly",
+      "tier": "medium"
+    },
+    {
+      "name": "bee",
+      "tier": "medium"
+    },
+    {
+      "name": "dog",
+      "tier": "medium"
+    },
+    {
+      "name": "spider",
+      "tier": "medium"
+    },
+    {
+      "name": "snake",
+      "tier": "medium"
+    },
+    {
+      "name": "duck",
+      "tier": "medium"
+    },
+    {
+      "name": "elephant",
+      "tier": "medium"
+    },
+    {
+      "name": "giraffe",
+      "tier": "medium"
+    },
+    {
+      "name": "horse",
+      "tier": "medium"
+    },
+    {
+      "name": "lion",
+      "tier": "medium"
+    },
+    {
+      "name": "monkey",
+      "tier": "medium"
+    },
+    {
+      "name": "owl",
+      "tier": "medium"
+    },
+    {
+      "name": "penguin",
+      "tier": "medium"
+    },
+    {
+      "name": "pig",
+      "tier": "medium"
+    },
+    {
+      "name": "rabbit",
+      "tier": "medium"
+    },
+    {
+      "name": "sheep",
+      "tier": "medium"
+    },
+    {
+      "name": "shark",
+      "tier": "medium"
+    },
+    {
+      "name": "whale",
+      "tier": "medium"
+    },
+    {
+      "name": "frog",
+      "tier": "medium"
+    },
+    {
+      "name": "octopus",
+      "tier": "medium"
+    },
+    {
+      "name": "snail",
+      "tier": "hard"
+    },
+    {
+      "name": "tornado",
+      "tier": "hard"
+    },
+    {
+      "name": "crab",
+      "tier": "hard"
+    },
+    {
+      "name": "guitar",
+      "tier": "hard"
+    },
+    {
+      "name": "piano",
+      "tier": "hard"
+    },
+    {
+      "name": "violin",
+      "tier": "hard"
+    },
+    {
+      "name": "drums",
+      "tier": "hard"
+    },
+    {
+      "name": "trumpet",
+      "tier": "hard"
+    },
+    {
+      "name": "saxophone",
+      "tier": "hard"
+    },
+    {
+      "name": "microphone",
+      "tier": "hard"
+    },
+    {
+      "name": "headphones",
+      "tier": "hard"
+    },
+    {
+      "name": "laptop",
+      "tier": "hard"
+    },
+    {
+      "name": "television",
+      "tier": "hard"
+    },
+    {
+      "name": "telephone",
+      "tier": "hard"
+    },
+    {
+      "name": "camera",
+      "tier": "hard"
+    },
+    {
+      "name": "toothbrush",
+      "tier": "hard"
+    },
+    {
+      "name": "scissors",
+      "tier": "hard"
+    },
+    {
+      "name": "hammer",
+      "tier": "hard"
+    },
+    {
+      "name": "screwdriver",
+      "tier": "hard"
+    },
+    {
+      "name": "paintbrush",
+      "tier": "hard"
+    },
+    {
+      "name": "basketball",
+      "tier": "hard"
+    },
+    {
+      "name": "soccer ball",
+      "tier": "hard"
+    },
+    {
+      "name": "baseball bat",
+      "tier": "hard"
+    },
+    {
+      "name": "tennis racquet",
+      "tier": "hard"
+    },
+    {
+      "name": "skateboard",
+      "tier": "hard"
+    },
+    {
+      "name": "roller coaster",
+      "tier": "hard"
+    },
+    {
+      "name": "hot air balloon",
+      "tier": "hard"
+    },
+    {
+      "name": "traffic light",
+      "tier": "hard"
+    },
+    {
+      "name": "fire hydrant",
+      "tier": "hard"
+    },
+    {
+      "name": "teddy-bear",
+      "tier": "hard"
+    }
+  ],
+  "valTop1": 0.8761,
+  "valTop5": 0.966225,
+  "exportedAt": "2026-07-02"
+}

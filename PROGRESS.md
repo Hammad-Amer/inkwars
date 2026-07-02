@@ -27,8 +27,8 @@ custom CNN trained on Quick Draw running client-side, commentary runs in-browser
 ## Phase Checklist
 
 - [x] **Phase 0 — Setup & alignment** (repo, git, scaffolding, this file)
-- [ ] **Phase 1 — Train & validate the AI guesser** ← IN PROGRESS (pipeline built; training run pending on user's GPU)
-- [ ] Phase 2 — Single-player core loop
+- [x] **Phase 1 — Train & validate the AI guesser** (87.6% top-1 / 96.6% top-5 val; browser-verified)
+- [ ] **Phase 2 — Single-player core loop** ← IN PROGRESS
 - [ ] Phase 3 — Multiplayer (rooms, Socket.io, AI as participant)
 - [ ] Phase 4 — Chaos modifiers
 - [ ] Phase 5 — Replay system (vector strokes)
@@ -48,29 +48,25 @@ custom CNN trained on Quick Draw running client-side, commentary runs in-browser
   `train.py` (CNN in `model.py`, AMP, `--smoke` flag), `export_onnx.py` (exports + verifies +
   installs into `client/public/model/`). All 100 category names validated against the official
   list; download URLs HEAD-checked.
-- **Verified end-to-end** on 2026-07-02 with a CPU smoke model (2 categories, 1 epoch):
-  download → train → ONNX export (matches PyTorch to 2.6e-08) → headless-Chromium draw test on
-  `/model-test` returned live guesses with zero console errors. Smoke artifacts were deleted
-  afterwards (placeholders don't get committed); the user's real training regenerates them.
-- `training/venv/` exists with CPU-only torch (from verification). `training/data/` already has
-  apple + banana.
+- **Trained model shipped**: 12 epochs on the user's RTX 4060 (torch 2.12.1+cu126, ~3.5
+  min/epoch), val top-1 87.6% / top-5 96.6%. Exported to `client/public/model/quickdraw.onnx`
+  (1.8 MB single file, `external_data=False` — ORT-web can't fetch sibling .data files) with
+  PyTorch parity 5.7e-06. Browser-verified: headless Chromium drew apple/sun/house/smiley
+  face/clock on `/model-test`; all five guessed top-1 at ~100% confidence, zero console errors.
+- `training/venv/` has CUDA torch; `training/data/` has all 100 categories (~2 GB).
 - Playwright + Chromium installed (`client` devDep) for browser-driving verification — reuse it
   in later phases.
 
 ## Next Immediate Step
 
-**User action:** install CUDA torch and train for real — follow `training/README.md`
-(install cu126 torch into the existing venv → `train.py --smoke` to confirm GPU → download all
-categories → full `train.py` → `export_onnx.py`). Then validate guess quality together on
-`/model-test` and tune preprocessing if needed. After that: commit the exported model, mark
-Phase 1 done, and start Phase 2 (single-player core loop).
+Phase 2 — single-player core loop (user gave go-ahead to proceed autonomously after training):
+`/play` page where a prompt is shown, the player draws it, the AI guesses live with a
+human-like thinking delay, and speed-based scoring works across a multi-round match.
 
 ## Open Questions / Unsure About
 
-- Browser rasterization was matched empirically to the dataset (centered, ~25/28 max-dim,
-  ~1.3px strokes — verified against real apple.npy statistics), but real-model guess quality on
-  human drawings still needs eyeballing once training completes; stroke width / margins may
-  need a tweak.
+- AI guess cadence/threshold values (how often it guesses, confidence gating, thinking delay)
+  are game-feel numbers — need the user's playtest feedback in Phase 2.
 - Deployment target: deliberately deferred until Phase 10 (per brief, ask user then).
 
 ## Decisions Already Made — do NOT re-litigate
@@ -87,5 +83,8 @@ Phase 1 done, and start Phase 2 (single-player core loop).
 
 - **2026-07-02** — Phase 0 complete (repo, git, client/server scaffolds, design tokens).
   Phase 1 built and smoke-verified end-to-end (training pipeline, ONNX export, `/model-test`
-  page with live browser-verified guessing). Remaining for Phase 1: the user's real GPU
-  training run + guess-quality validation.
+  page with live browser-verified guessing).
+- **2026-07-02 (later)** — Phase 1 completed: real training run (87.6%/96.6%), model exported
+  and browser-validated 5/5. Fixes along the way: pip>=23 needed for the PyTorch index,
+  `onnxscript` needed by torch 2.12's exporter, UTF-8 stdout on Windows, single-file ONNX
+  export. Phase 2 started on the user's go-ahead.

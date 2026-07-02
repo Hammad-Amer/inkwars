@@ -11,6 +11,10 @@ exist from pipeline verification — the CUDA install below simply replaces it.)
 python -m venv venv          # skip if venv/ already exists
 .\venv\Scripts\Activate.ps1
 
+# Old pip (< ~23) fails on the PyTorch index with a typing_extensions
+# "ResolutionImpossible" error — upgrade it first.
+python -m pip install --upgrade pip
+
 # PyTorch with CUDA (~2.5 GB download). cu126 works with any recent NVIDIA driver.
 pip install torch --index-url https://download.pytorch.org/whl/cu126 --force-reinstall
 
