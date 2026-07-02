@@ -1,0 +1,21 @@
+# Node
+node_modules/
+dist/
+*.local
+npm-debug.log*
+
+# Training artifacts (the exported model ships via client/public/model/)
+training/data/
+training/checkpoints/
+training/venv/
+training/.venv/
+*.npy
+*.pt
+__pycache__/
+*.pyc
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

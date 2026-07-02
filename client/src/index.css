@@ -1,0 +1,109 @@
+/* ---------------------------------------------------------------------------
+   Drawing Arena — design tokens & base styles
+   Direction: bold editorial base (big type, flat vivid color, hard edges)
+   with hand-drawn ink accents (Caveat, wobbly strokes, doodle details).
+   --------------------------------------------------------------------------- */
+
+:root {
+  /* Palette */
+  --paper: #f5f2ea;
+  --paper-raised: #fffdf6;
+  --ink: #141414;
+  --ink-soft: #4a4a44;
+  --acid: #e8ff3c; /* brand accent — highlights, correct guesses */
+  --human: #ff4d1c; /* team humans */
+  --ai: #2547f4; /* team AI */
+  --line: #d8d3c4;
+
+  /* Type */
+  --font-display: 'Archivo', sans-serif;
+  --font-hand: 'Caveat', cursive;
+  --font-mono: 'Space Mono', monospace;
+
+  /* Rhythm */
+  --radius: 2px; /* hard edges — near-square corners everywhere */
+  --border: 2px solid var(--ink);
+  --shadow-press: 4px 4px 0 var(--ink); /* flat offset shadow, no blur */
+
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100vh;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 16px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-stretch: 125%;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  line-height: 0.95;
+}
+
+button {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1rem;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: var(--paper-raised);
+  border: var(--border);
+  border-radius: var(--radius);
+  padding: 0.6rem 1.2rem;
+  cursor: pointer;
+  box-shadow: var(--shadow-press);
+  transition:
+    transform 80ms ease,
+    box-shadow 80ms ease;
+}
+
+button:hover {
+  background: var(--acid);
+}
+
+button:active {
+  transform: translate(4px, 4px);
+  box-shadow: 0 0 0 var(--ink);
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: var(--shadow-press);
+  transform: none;
+}
+
+a {
+  color: var(--ink);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+/* Hand-written aside — the "ink" voice used for annotations and AI chatter */
+.hand-note {
+  font-family: var(--font-hand);
+  font-size: 1.35rem;
+  line-height: 1.15;
+  color: var(--ink-soft);
+  text-transform: none;
+}
