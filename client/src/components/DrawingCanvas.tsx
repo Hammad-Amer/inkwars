@@ -9,6 +9,8 @@ interface DrawingCanvasProps {
   onDrawing?: (strokes: Stroke[]) => void
   /** Incrementing this prop clears the canvas. */
   clearToken?: number
+  /** Incrementing this prop removes the most recent stroke. */
+  undoToken?: number
   /** When true, pointer input is ignored (e.g. between rounds). */
   disabled?: boolean
 }
@@ -22,6 +24,7 @@ export default function DrawingCanvas({
   onStrokesChange,
   onDrawing,
   clearToken,
+  undoToken,
   disabled = false,
 }: DrawingCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -42,6 +45,25 @@ export default function DrawingCanvas({
     canvas.getContext('2d')!.clearRect(0, 0, canvas.width, canvas.height)
     callbacksRef.current.onStrokesChange([])
   }, [clearToken])
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas || !undoToken || strokesRef.current.length === 0) return
+    strokesRef.current = strokesRef.current.slice(0, -1)
+    const ctx = canvas.getContext('2d')!
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    const current = currentRef.current
+    const toRedraw = current ? [...strokesRef.current, current] : strokesRef.current
+    for (const stroke of toRedraw) {
+      if (stroke.length === 0) continue
+      ctx.beginPath()
+      ctx.moveTo(stroke[0].x, stroke[0].y)
+      for (const p of stroke) ctx.lineTo(p.x, p.y)
+      if (stroke.length === 1) ctx.lineTo(stroke[0].x + 0.01, stroke[0].y)
+      ctx.stroke()
+    }
+    callbacksRef.current.onStrokesChange(strokesRef.current)
+  }, [undoToken])
 
   useEffect(() => {
     const canvas = canvasRef.current!

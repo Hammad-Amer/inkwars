@@ -85,6 +85,7 @@ export default function Play() {
     results: [],
   })
   const [clearToken, setClearToken] = useState(0)
+  const [undoToken, setUndoToken] = useState(0)
   const [timeLeftMs, setTimeLeftMs] = useState(ROUND_DURATION_MS)
 
   const guesserRef = useRef<Guesser | null>(null)
@@ -157,6 +158,20 @@ export default function Play() {
 
   // round countdown
   const phaseName = state.phase.name
+
+  // Ctrl+Z / Cmd+Z undoes the last stroke while drawing
+  useEffect(() => {
+    if (phaseName !== 'drawing') return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault()
+        setUndoToken((n) => n + 1)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [phaseName])
+
   useEffect(() => {
     if (phaseName !== 'drawing') return
     const interval = setInterval(() => {
@@ -253,12 +268,22 @@ export default function Play() {
                 onStrokesChange={onStrokes}
                 onDrawing={onStrokes}
                 clearToken={clearToken}
+                undoToken={undoToken}
                 disabled={state.phase.name !== 'drawing'}
               />
               {state.phase.name === 'drawing' && (
-                <button className="play-giveup" onClick={() => closeRound(null)}>
-                  Give up
-                </button>
+                <div className="play-canvas-tools">
+                  <button
+                    className="play-undo"
+                    title="Undo last stroke (Ctrl+Z)"
+                    onClick={() => setUndoToken((n) => n + 1)}
+                  >
+                    ↩ Undo
+                  </button>
+                  <button className="play-giveup" onClick={() => closeRound(null)}>
+                    Give up
+                  </button>
+                </div>
               )}
             </div>
             <GuessFeed entries={state.feed} />

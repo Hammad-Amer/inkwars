@@ -59,10 +59,11 @@ custom CNN trained on Quick Draw running client-side, commentary runs in-browser
 
 ## Next Immediate Step
 
-**User playtests Phase 2** (`cd client && npm run dev` → `/play`): does the AI's guessing
-cadence feel like a player? Is 60s/5-rounds right? Tune the knobs at the top of
-`client/src/lib/aiPlayer.ts` based on feedback. Then, on the user's "go": Phase 3
-(multiplayer — rooms, Socket.io, AI as a participant in the shared guess feed).
+**User re-playtests Phase 2 after the 2026-07-04 tuning pass** (`cd client && npm run dev` →
+`/play`): first playtest verdict was "AI guesses way too quickly", so the AI was reworked to be
+human-believable (see Phase 2 notes). Confirm the new pacing feels right; knobs remain at the
+top of `client/src/lib/aiPlayer.ts`. Then, on the user's "go": Phase 3 (multiplayer — rooms,
+Socket.io, AI as a participant in the shared guess feed).
 
 ## Phase 2 notes (what was built)
 
@@ -76,6 +77,20 @@ cadence feel like a player? Is 60s/5-rounds right? Tune the knobs at the top of
 - Browser-verified end-to-end: drew "sun", AI called it at ~4s, +95 pts awarded, give-up path
   and match summary all exercised, no real console errors (one benign ORT wasm-streaming
   fallback warning in dev).
+- **2026-07-04 tuning pass (playtest feedback: "guesses way too quickly").** Root cause: the
+  prompts come from the same 100 classes the model trained on, and Quick Draw training data is
+  itself hasty doodles, so softmax confidence saturates within a few strokes — raw confidence
+  is a weak brake. `aiPlayer.ts` reworked to be human-believable instead of just slower:
+  (1) ink gate — no reaction until enough drawing exists (≥8 points, ≥40px, pen travel ≥1.6×
+  drawing size); (2) conviction — same top pick must hold for 4 consecutive reads early round,
+  relaxing to 2 late; (3) near-miss blurts — when #2 is within 0.35 of #1, 45% chance it calls
+  the runner-up first (max 2/round). First-guess floor 3.5s→4.5s, start threshold 0.45→0.55.
+  Verified: speed-drawn sun → first guess 4.8s (was ~4s), then it committed and stayed quiet
+  rather than spamming runner-ups.
+- **Canvas undo (user request):** `DrawingCanvas` takes an `undoToken` prop (mirrors
+  `clearToken`) that pops the last stroke and redraws; `/play` has an "↩ Undo" button next to
+  Give up, plus Ctrl+Z/Cmd+Z while drawing. Strokes stay vectors (Phase 5 replay unaffected);
+  the AI observes the post-undo stroke list. Pixel-verified in the browser (button + Ctrl+Z).
 
 ## Open Questions / Unsure About
 
@@ -105,3 +120,7 @@ cadence feel like a player? Is 60s/5-rounds right? Tune the knobs at the top of
 - **2026-07-02 (later still)** — Phase 2 built and browser-verified: `/play` single-player loop
   (AI player module, 5-round matches, speed scoring, round/match panels). Stopped here per the
   one-phase rule; Phase 3 awaits the user's go.
+- **2026-07-04** — Phase 2 tuning from first playtest: AI made human-believable (ink gate,
+  conviction streak, near-miss blurts) after "guesses too quickly" feedback; canvas undo added
+  (button + Ctrl+Z). Both browser-verified. Awaiting re-playtest verdict; Phase 3 still awaits
+  the user's go.

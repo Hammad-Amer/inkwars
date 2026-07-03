@@ -182,6 +182,12 @@
   align-items: flex-start;
 }
 
+.play-canvas-tools {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.play-undo,
 .play-giveup {
   font-size: 0.85rem;
   padding: 0.4rem 0.8rem;
