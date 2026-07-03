@@ -1,0 +1,463 @@
+.room {
+  max-width: 1060px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+}
+
+.room-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.room-back {
+  text-decoration: none;
+}
+
+.room-code {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: 0.35em;
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-press);
+  padding: 0.3rem 0.5rem 0.3rem 0.85rem;
+}
+
+/* Humans vs AI strip */
+
+.room-teams {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  font-weight: 900;
+  font-stretch: 125%;
+  text-transform: uppercase;
+}
+
+.room-teams-humans {
+  color: var(--human);
+}
+
+.room-teams-ai {
+  color: var(--ai);
+}
+
+.room-teams-vs {
+  font-family: var(--font-hand);
+  text-transform: none;
+  color: var(--ink-soft);
+  font-size: 1.1rem;
+}
+
+/* Join screen */
+
+.room-join-kicker {
+  display: inline-block;
+  transform: rotate(-2deg);
+  margin: 3vh 0 0.5rem 0.25rem;
+}
+
+.room-join h1 {
+  font-size: clamp(3rem, 9vw, 5.5rem);
+  margin-bottom: 2rem;
+}
+
+.room-join-card {
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.room-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.room-field-label {
+  font-family: var(--font-hand);
+  font-size: 1.2rem;
+  color: var(--ink-soft);
+}
+
+.room-join-card input {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--paper-raised);
+  border: var(--border);
+  border-radius: var(--radius);
+  padding: 0.55rem 0.7rem;
+}
+
+.room-join-card input:focus-visible {
+  outline: 3px solid var(--acid);
+  outline-offset: 1px;
+}
+
+.room-cta {
+  font-size: 1.15rem;
+  padding: 0.8rem 1.6rem;
+  background: var(--acid);
+}
+
+.room-join-divider {
+  margin: 0.25rem 0 0;
+}
+
+.room-join-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.room-code-input {
+  width: 8.5ch;
+  font-family: var(--font-mono) !important;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
+
+.room-error {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  color: var(--human);
+}
+
+/* Lobby */
+
+.room-lobby {
+  max-width: 560px;
+}
+
+.room-lobby-code {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 0.75rem 0 1.5rem;
+}
+
+.room-lobby-code-value {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: clamp(2.2rem, 7vw, 3.4rem);
+  letter-spacing: 0.3em;
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--acid);
+  box-shadow: var(--shadow-press);
+  padding: 0.2rem 0.3rem 0.2rem 0.7rem;
+}
+
+.room-lobby-players {
+  list-style: none;
+  margin: 0 0 1.5rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.room-lobby-players li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-press);
+  padding: 0.5rem 0.85rem;
+  font-weight: 700;
+}
+
+.room-lobby-players li.is-ai {
+  color: var(--ai);
+  border-color: var(--ai);
+  box-shadow: 4px 4px 0 var(--ai);
+}
+
+.room-lobby-tag {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.05rem 0.35rem;
+}
+
+.room-lobby-players li.is-ai .room-lobby-tag {
+  color: var(--ai);
+  border-color: var(--ai);
+}
+
+.room-lobby-solo {
+  margin-top: 1rem;
+}
+
+/* Arena */
+
+.room-prompt-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--ink);
+  color: var(--paper);
+  padding: 0.7rem 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.room-prompt {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.room-prompt-label {
+  font-family: var(--font-hand);
+  font-size: 1.2rem;
+  color: var(--acid);
+  white-space: nowrap;
+}
+
+.room-prompt-word {
+  font-weight: 900;
+  font-stretch: 125%;
+  text-transform: uppercase;
+  font-size: clamp(1.2rem, 3.5vw, 1.8rem);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.room-prompt-mask {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: clamp(1.1rem, 3vw, 1.5rem);
+  letter-spacing: 0.25em;
+  white-space: pre;
+}
+
+.room-tier {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  padding: 0.15rem 0.4rem;
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.room-tier-medium {
+  background: var(--human);
+  color: var(--paper-raised);
+}
+
+.room-tier-hard {
+  background: var(--ai);
+  color: var(--paper-raised);
+}
+
+.room-round-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-shrink: 0;
+}
+
+.room-round-count {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--line);
+}
+
+.room-timer {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 1.4rem;
+  min-width: 3ch;
+  text-align: right;
+}
+
+.room-timer.is-low {
+  color: var(--human);
+  animation: room-timer-pulse 1s ease-in-out infinite;
+}
+
+@keyframes room-timer-pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.room-stage {
+  display: grid;
+  grid-template-columns: minmax(280px, 480px) 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+@media (max-width: 760px) {
+  .room-stage {
+    grid-template-columns: 1fr;
+  }
+}
+
+.room-canvas {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.room-undo {
+  font-size: 0.85rem;
+  padding: 0.4rem 0.8rem;
+}
+
+.room-side {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
+/* Scoreboard */
+
+.room-scoreboard {
+  list-style: none;
+  margin: 0;
+  padding: 0.75rem;
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-press);
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.room-scoreboard li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-weight: 700;
+}
+
+.room-scoreboard li.is-ai {
+  color: var(--ai);
+}
+
+.room-score-value {
+  font-family: var(--font-mono);
+}
+
+/* Round-end panel */
+
+.room-panel {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  height: fit-content;
+  width: min(90vw, 440px);
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+  box-shadow: 8px 8px 0 var(--ink);
+  padding: 1.75rem;
+  text-align: center;
+  animation: room-panel-in 200ms ease-out;
+}
+
+@keyframes room-panel-in {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+}
+
+.room-panel h2 {
+  font-size: 1.8rem;
+  margin-bottom: 0.5rem;
+}
+
+.room-panel-gains {
+  list-style: none;
+  margin: 1rem 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.room-panel-gains li {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+
+.room-panel-gains li.is-ai {
+  color: var(--ai);
+}
+
+/* Match end */
+
+.room-summary {
+  text-align: center;
+  padding-top: 4vh;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.room-summary h1 {
+  font-size: clamp(2.6rem, 8vw, 4.5rem);
+  margin: 0.5rem 0 1rem;
+}
+
+.room-summary-teams {
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: 0.6rem;
+  font-weight: 900;
+  font-stretch: 125%;
+  text-transform: uppercase;
+  font-size: 1.3rem;
+  margin-bottom: 1.5rem;
+}
+
+.room-summary-players {
+  list-style: none;
+  margin: 0 0 2rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.room-summary-players li {
+  display: flex;
+  justify-content: space-between;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.45rem 0.75rem;
+  font-weight: 700;
+}
+
+.room-summary-players li.is-ai {
+  color: var(--ai);
+  border-color: var(--ai);
+}

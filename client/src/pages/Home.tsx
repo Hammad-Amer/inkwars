@@ -20,8 +20,11 @@ export default function Home() {
         you. Draw the secret word — the faster the AI recognizes it, the more you score.
       </p>
       <div className="home-actions">
-        <Link to="/play" className="home-cta home-cta-primary">
-          Play →
+        <Link to="/rooms" className="home-cta home-cta-primary">
+          Play with friends →
+        </Link>
+        <Link to="/play" className="home-cta">
+          Solo practice
         </Link>
         <Link to="/model-test" className="home-cta">
           Model test lab

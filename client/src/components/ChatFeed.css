@@ -1,0 +1,139 @@
+.chat-feed {
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-press);
+  padding: 1rem;
+  min-height: 260px;
+  max-height: 560px;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-feed-title {
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.chat-feed-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--human);
+  animation: chat-feed-blink 1.6s ease-in-out infinite;
+}
+
+@keyframes chat-feed-blink {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+.chat-feed-form {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+
+.chat-feed-input {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--paper);
+  border: var(--border);
+  border-radius: var(--radius);
+  padding: 0.45rem 0.6rem;
+}
+
+.chat-feed-input:focus-visible {
+  outline: 3px solid var(--acid);
+  outline-offset: 1px;
+}
+
+.chat-feed-input:disabled {
+  opacity: 0.5;
+}
+
+.chat-feed-send {
+  font-size: 0.85rem;
+  padding: 0.45rem 0.8rem;
+}
+
+.chat-feed-close {
+  margin: 0 0 0.5rem;
+  color: var(--human);
+}
+
+.chat-feed-empty {
+  margin: 0;
+}
+
+.chat-feed-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  overflow-y: auto;
+}
+
+.chat-feed-item {
+  padding: 0.3rem 0.55rem;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius);
+  font-weight: 700;
+  animation: chat-feed-pop 180ms ease-out;
+}
+
+@keyframes chat-feed-pop {
+  from {
+    transform: translateY(-4px);
+    opacity: 0;
+  }
+}
+
+.chat-feed-item.is-system {
+  border-color: transparent;
+  padding: 0.1rem 0.55rem;
+}
+
+.chat-feed-item.is-ai .chat-feed-name,
+.chat-feed-item.is-ai .chat-feed-text {
+  color: var(--ai);
+}
+
+.chat-feed-item.is-me .chat-feed-name {
+  text-decoration: underline;
+  text-decoration-color: var(--acid);
+  text-decoration-thickness: 3px;
+}
+
+.chat-feed-item.is-correct {
+  border: var(--border);
+  background: var(--acid);
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.chat-feed-item.is-correct .chat-feed-text {
+  color: var(--ink);
+}
+
+.chat-feed-name {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--ink-soft);
+  margin-right: 0.35rem;
+}
+
+.chat-feed-system {
+  font-size: 1.1rem;
+}
