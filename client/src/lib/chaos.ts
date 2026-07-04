@@ -14,9 +14,22 @@ export function mirrorPoint(p: StrokePoint, canvasSize: number): StrokePoint {
   return { ...p, x: canvasSize - p.x }
 }
 
+/**
+ * jitter: a smooth pseudo-random drift keyed by the point's timestamp — two
+ * incommensurate sines per axis, so the wobble is continuous along a stroke
+ * but never settles. Deterministic in t, which keeps it unit-testable.
+ */
+export function jitterPoint(p: StrokePoint, canvasSize: number): StrokePoint {
+  const amp = canvasSize * 0.012 // ~5.5px on the 460px drawer canvas
+  const dx = amp * (Math.sin(p.t / 173) + 0.5 * Math.sin(p.t / 59))
+  const dy = amp * (Math.cos(p.t / 211) + 0.5 * Math.sin(p.t / 83))
+  return { ...p, x: p.x + dx, y: p.y + dy }
+}
+
 export function transformFor(
   modifier: ChaosModifier | null | undefined,
 ): PointTransform | undefined {
   if (modifier === 'mirror') return mirrorPoint
+  if (modifier === 'jitter') return jitterPoint
   return undefined
 }
