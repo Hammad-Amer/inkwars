@@ -13,6 +13,8 @@ interface DrawingCanvasProps {
   undoToken?: number
   /** When true, pointer input is ignored (e.g. between rounds). */
   disabled?: boolean
+  /** Optional transform applied to captured points before storing them. */
+  transformPoint?: (p: StrokePoint, canvasSize: number) => StrokePoint
 }
 
 /**
@@ -26,6 +28,7 @@ export default function DrawingCanvas({
   clearToken,
   undoToken,
   disabled = false,
+  transformPoint,
 }: DrawingCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const strokesRef = useRef<Stroke[]>([])
@@ -35,6 +38,8 @@ export default function DrawingCanvas({
   callbacksRef.current = { onStrokesChange, onDrawing }
   const disabledRef = useRef(disabled)
   disabledRef.current = disabled
+  const transformRef = useRef(transformPoint)
+  transformRef.current = transformPoint
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -82,7 +87,12 @@ export default function DrawingCanvas({
     const toPoint = (e: PointerEvent): StrokePoint => {
       const r = canvas.getBoundingClientRect()
       if (startTimeRef.current === 0) startTimeRef.current = performance.now()
-      return { x: e.clientX - r.left, y: e.clientY - r.top, t: performance.now() - startTimeRef.current }
+      const raw = {
+        x: e.clientX - r.left,
+        y: e.clientY - r.top,
+        t: performance.now() - startTimeRef.current,
+      }
+      return transformRef.current ? transformRef.current(raw, r.width) : raw
     }
 
     const onPointerDown = (e: PointerEvent) => {

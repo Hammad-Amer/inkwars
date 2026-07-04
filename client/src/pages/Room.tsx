@@ -17,6 +17,7 @@ import DrawingCanvas from '../components/DrawingCanvas'
 import LiveCanvas from '../components/LiveCanvas'
 import { AiPlayer } from '../lib/aiPlayer'
 import { Guesser } from '../lib/guesser'
+import { transformFor } from '../lib/chaos'
 import { getSocket } from '../lib/socket'
 import { StrokeSender, StrokeStore } from '../lib/strokeWire'
 import type { Stroke } from '../lib/strokes'
@@ -260,6 +261,7 @@ export default function Room() {
                     clearToken={clearToken}
                     undoToken={undoToken}
                     disabled={!drawing}
+                    transformPoint={transformFor(drawing?.round.modifier)}
                   />
                   {drawing && (
                     <button
