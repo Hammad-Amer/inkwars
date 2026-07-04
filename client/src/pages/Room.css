@@ -469,3 +469,17 @@
   color: var(--ai);
   border-color: var(--ai);
 }
+
+/* Simultaneous mode gallery */
+
+.simul-gallery { width: 100%; }
+.simul-gallery-title { text-align: center; margin-block: 0.5rem; }
+.simul-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+.simul-entry { border: 3px solid var(--ink, #141414); padding: 0.5rem; background: #fff; }
+.simul-entry canvas { width: 100%; aspect-ratio: 1; }
+.simul-vote-btn { width: 100%; margin-top: 0.4rem; }
+.room-simul-spectate { display: grid; place-items: center; min-height: 200px; }

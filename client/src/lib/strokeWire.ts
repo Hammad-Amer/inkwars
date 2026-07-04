@@ -67,6 +67,11 @@ export class StrokeSender {
   }
 }
 
+/** Full-drawing normalization for one-shot payloads (simultaneous mode). */
+export function normalizeStrokes(strokes: Stroke[], canvasSize: number): NormPoint[][] {
+  return strokes.map((s) => s.map((p) => ({ x: p.x / canvasSize, y: p.y / canvasSize, t: p.t })))
+}
+
 interface StoredStroke {
   begin: NormPoint | null
   chunks: Map<number, NormPoint[]> // by seq

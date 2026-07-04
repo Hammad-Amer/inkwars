@@ -11,6 +11,7 @@ import {
   type RoomPhase,
   type RoomState,
   type RoundReveal,
+  type SimulEntry,
   type StrokeEvent,
 } from '../../../shared/protocol'
 import { ChaosBadge, ChaosBanner } from '../components/Chaos'
@@ -20,8 +21,9 @@ import LiveCanvas from '../components/LiveCanvas'
 import { AiPlayer } from '../lib/aiPlayer'
 import { Guesser } from '../lib/guesser'
 import { transformFor } from '../lib/chaos'
+import { strokesToModelInput } from '../lib/preprocess'
 import { getSocket } from '../lib/socket'
-import { StrokeSender, StrokeStore } from '../lib/strokeWire'
+import { normalizeStrokes, StrokeSender, StrokeStore } from '../lib/strokeWire'
 import type { Stroke } from '../lib/strokes'
 import './Room.css'
 
@@ -61,6 +63,11 @@ export default function Room() {
   const nudgeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const memoryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const modifierRef = useRef<ChaosModifier | null>(null)
+  const drawingRef = useRef<Extract<RoomPhase, { name: 'drawing' }> | null>(null)
+  const simulStrokesRef = useRef<Stroke[]>([])
+  const simulSubmittedRef = useRef(false)
+  // joined mid-simul-round: spectate it (the server ignores late submissions anyway)
+  const spectatingRoundRef = useRef(-1)
 
   // --- socket lifecycle -------------------------------------------------------
 
@@ -132,9 +139,12 @@ export default function Room() {
   const phase: RoomPhase | null = room?.phase ?? null
   const drawing = phase?.name === 'drawing' ? phase : null
   const roundEnd = phase?.name === 'round-end' ? phase : null
-  const meta = drawing?.round ?? roundEnd?.round ?? null
+  const simulVote = phase?.name === 'simul-vote' ? phase : null
+  const meta = drawing?.round ?? roundEnd?.round ?? simulVote?.round ?? null
   const isDrawer = meta !== null && meta.drawerId === playerId
+  const isSimul = meta?.modifier === 'simul'
   modifierRef.current = drawing?.round.modifier ?? null
+  drawingRef.current = drawing
 
   // --- drawer: stream strokes + host the AI's eyes -------------------------------
 
@@ -144,6 +154,7 @@ export default function Room() {
   }, [])
 
   const flushStrokes = useCallback((strokes: Stroke[]) => {
+    if (modifierRef.current === 'simul') return
     const canvas = canvasWrapRef.current?.querySelector('canvas')
     const size = canvas?.getBoundingClientRect().width
     if (size) senderRef.current?.update(strokes, size)
@@ -171,11 +182,33 @@ export default function Room() {
     [armMemoryTimer, flushStrokes],
   )
 
+  const onSimulStrokes = useCallback((strokes: Stroke[]) => {
+    simulStrokesRef.current = strokes // private: nothing leaves this tab until the deadline
+  }, [])
+
+  const submitSimul = useCallback(async () => {
+    const canvas = canvasWrapRef.current?.querySelector('canvas')
+    const size = canvas?.getBoundingClientRect().width ?? 0
+    const strokes = simulStrokesRef.current
+    let topGuess = ''
+    let confidence = 0
+    const guesser = await loadSharedGuesser()
+    const input = guesser && strokes.length > 0 ? strokesToModelInput(strokes) : null
+    if (guesser && input) {
+      const [best] = await guesser.guess(input, 1)
+      if (best) {
+        topGuess = best.category
+        confidence = best.probability
+      }
+    }
+    getSocket().emit('simul-submit', size ? normalizeStrokes(strokes, size) : [], topGuess, confidence)
+  }, [])
+
   const drawingRoundKey = drawing ? drawing.round.roundIndex : -1
 
   // Ctrl+Z / Cmd+Z undoes my last stroke while I'm the drawer
   useEffect(() => {
-    if (drawingRoundKey < 0 || !isDrawer) return
+    if (drawingRoundKey < 0 || (!isDrawer && !isSimul)) return
     const onKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
         e.preventDefault()
@@ -184,10 +217,10 @@ export default function Room() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [drawingRoundKey, isDrawer])
+  }, [drawingRoundKey, isDrawer, isSimul])
 
   useEffect(() => {
-    if (drawingRoundKey < 0 || !isDrawer) return
+    if (drawingRoundKey < 0 || !isDrawer || drawing?.round.modifier === 'simul') return
     let cancelled = false
     let ai: AiPlayer | null = null
     void loadSharedGuesser().then((guesser) => {
@@ -205,7 +238,31 @@ export default function Room() {
       ai?.stop()
       aiRef.current = null
     }
-  }, [drawingRoundKey, isDrawer])
+  }, [drawingRoundKey, isDrawer, drawing?.round.modifier])
+
+  // simultaneous mode: draw privately, submit (with my AI's verdict) at the deadline.
+  // Reads drawingRef/spectatingRoundRef instead of closing over `drawing` directly so the
+  // effect body has no reactive deps beyond drawingRoundKey (see the deps comment below) —
+  // `drawing` is a fresh object on every room-state broadcast (score updates etc.) and would
+  // otherwise force this to re-run mid-round, resetting the submitted flag.
+  useEffect(() => {
+    const round = drawingRef.current
+    if (drawingRoundKey < 0 || !round || round.round.modifier !== 'simul') return
+    if (spectatingRoundRef.current === round.round.roundIndex) return
+    simulSubmittedRef.current = false
+    simulStrokesRef.current = []
+    void loadSharedGuesser() // warm the model before the verdict is due
+    const endsAt = round.round.endsAtMs
+    const interval = setInterval(() => {
+      if (simulSubmittedRef.current || Date.now() < endsAt) return
+      simulSubmittedRef.current = true
+      clearInterval(interval)
+      void submitSimul()
+    }, 200)
+    return () => clearInterval(interval)
+    // deps: drawingRoundKey (+ the stable submitSimul callback) — it changes exactly once per
+    // round, and re-running on every room-state (scores) would reset the submitted flag mid-round
+  }, [drawingRoundKey, submitSimul])
 
   // --- render --------------------------------------------------------------------
 
@@ -216,6 +273,9 @@ export default function Room() {
         onJoined={(id, state) => {
           setPlayerId(id)
           setRoom(state)
+          if (state.phase.name === 'drawing' && state.phase.round.modifier === 'simul') {
+            spectatingRoundRef.current = state.phase.round.roundIndex
+          }
         }}
       />
     )
@@ -242,10 +302,10 @@ export default function Room() {
         />
       )}
 
-      {(drawing || roundEnd) && meta && (
+      {(drawing || roundEnd || simulVote) && meta && (
         <section className="room-arena">
           <div className="room-prompt-bar">
-            {isDrawer && prompt ? (
+            {(isDrawer || isSimul) && prompt ? (
               <div className="room-prompt">
                 <span className="room-prompt-label">draw</span>
                 <span className="room-prompt-word">{prompt}</span>
@@ -265,51 +325,66 @@ export default function Room() {
               <span className="room-round-count">
                 round {meta.roundIndex + 1}/{meta.totalRounds}
               </span>
-              {drawing && <Countdown endsAtMs={meta.endsAtMs} />}
+              {(drawing || simulVote) && (
+                <Countdown endsAtMs={simulVote ? simulVote.votesEndAtMs : meta.endsAtMs} />
+              )}
             </div>
           </div>
 
           <div className="room-stage">
-            <div className="room-canvas" ref={canvasWrapRef}>
-              {isDrawer ? (
-                <>
-                  <DrawingCanvas
-                    onStrokesChange={onStrokesChange}
-                    onDrawing={onDrawingStrokes}
-                    clearToken={clearToken}
-                    undoToken={undoToken}
-                    disabled={!drawing}
-                    hideInk={memoryHidden}
-                    transformPoint={transformFor(drawing?.round.modifier)}
-                  />
-                  {memoryHidden && drawing && (
-                    <p className="hand-note room-memory-veil">
-                      lights out — finish it from memory
-                    </p>
-                  )}
-                  {drawing && (
-                    <button
-                      className="room-undo"
-                      title="Undo last stroke (Ctrl+Z)"
-                      onClick={() => setUndoToken((n) => n + 1)}
-                    >
-                      ↩ Undo
-                    </button>
-                  )}
-                </>
-              ) : (
-                <LiveCanvas strokes={liveStrokes} />
-              )}
-              {drawing?.round.modifier && (
-                <ChaosBanner modifier={drawing.round.modifier} roundKey={drawing.round.roundIndex} />
-              )}
-            </div>
+            {simulVote ? (
+              <SimulGallery
+                gallery={simulVote.gallery}
+                meId={playerId}
+                votesEndAtMs={simulVote.votesEndAtMs}
+                onVote={(id) => socket.emit('simul-vote', id)}
+              />
+            ) : (
+              <div className="room-canvas" ref={canvasWrapRef}>
+                {isSimul && drawing && spectatingRoundRef.current === drawing.round.roundIndex ? (
+                  <p className="hand-note room-simul-spectate">
+                    everyone's mid-drawing — you're in from the next round
+                  </p>
+                ) : isDrawer || (isSimul && drawing) ? (
+                  <>
+                    <DrawingCanvas
+                      onStrokesChange={isSimul ? onSimulStrokes : onStrokesChange}
+                      onDrawing={isSimul ? onSimulStrokes : onDrawingStrokes}
+                      clearToken={clearToken}
+                      undoToken={undoToken}
+                      disabled={!drawing}
+                      hideInk={isSimul ? false : memoryHidden}
+                      transformPoint={isSimul ? undefined : transformFor(drawing?.round.modifier)}
+                    />
+                    {memoryHidden && drawing && (
+                      <p className="hand-note room-memory-veil">
+                        lights out — finish it from memory
+                      </p>
+                    )}
+                    {drawing && (
+                      <button
+                        className="room-undo"
+                        title="Undo last stroke (Ctrl+Z)"
+                        onClick={() => setUndoToken((n) => n + 1)}
+                      >
+                        ↩ Undo
+                      </button>
+                    )}
+                  </>
+                ) : simulVote ? null : (
+                  <LiveCanvas strokes={liveStrokes} />
+                )}
+                {drawing?.round.modifier && (
+                  <ChaosBanner modifier={drawing.round.modifier} roundKey={drawing.round.roundIndex} />
+                )}
+              </div>
+            )}
             <div className="room-side">
               <Scoreboard room={room} meId={playerId} drawerId={meta.drawerId} />
               <ChatFeed
                 entries={feed}
                 meId={playerId}
-                canGuess={!!drawing && !isDrawer && !gotIt}
+                canGuess={!!drawing && !isDrawer && !gotIt && !isSimul}
                 onGuess={(text) => socket.emit('guess', text)}
                 closeNudge={closeNudge}
               />
@@ -564,7 +639,9 @@ function RoundEndPanel({
       ? 'Everyone got it!'
       : reveal.reason === 'timeout'
         ? 'Time’s up'
-        : 'The drawer left'
+        : reveal.reason === 'simul-done'
+          ? 'The votes are in'
+          : 'The drawer left'
   return (
     <div className="room-panel" role="dialog" aria-label="round result">
       <h2>{headline}</h2>
@@ -582,6 +659,11 @@ function RoundEndPanel({
         </ul>
       ) : (
         <p className="hand-note">nobody scored. brutal.</p>
+      )}
+      {reveal.aiPickId && (
+        <p className="hand-note">
+          THE MACHINE backed {room.players.find((p) => p.id === reveal.aiPickId)?.name ?? '?'} (+40)
+        </p>
       )}
       <p className="hand-note">
         {isLast ? 'final tally coming up…' : <NextIn nextAtMs={nextAtMs} />}
@@ -639,5 +721,46 @@ function MatchEnd({
         <p className="hand-note">the host can start a rematch…</p>
       )}
     </section>
+  )
+}
+
+function SimulGallery({
+  gallery,
+  meId,
+  votesEndAtMs,
+  onVote,
+}: {
+  gallery: SimulEntry[]
+  meId: string
+  votesEndAtMs: number
+  onVote: (playerId: string) => void
+}) {
+  const [votedFor, setVotedFor] = useState<string | null>(null)
+  void votesEndAtMs // countdown lives in the prompt bar
+  return (
+    <div className="simul-gallery">
+      <p className="hand-note simul-gallery-title">vote for the best one (not yours, obviously)</p>
+      <div className="simul-grid">
+        {gallery.map((e) => (
+          <figure key={e.playerId} className="simul-entry">
+            <LiveCanvas strokes={e.strokes} />
+            <figcaption>
+              {e.name}
+              {e.playerId === meId ? ' (you)' : ''}
+            </figcaption>
+            <button
+              className="simul-vote-btn"
+              disabled={e.playerId === meId || votedFor !== null}
+              onClick={() => {
+                setVotedFor(e.playerId)
+                onVote(e.playerId)
+              }}
+            >
+              {votedFor === e.playerId ? 'Voted ✓' : 'Vote'}
+            </button>
+          </figure>
+        ))}
+      </div>
+    </div>
   )
 }
