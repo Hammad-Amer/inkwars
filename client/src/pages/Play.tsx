@@ -2,8 +2,11 @@ import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import DrawingCanvas from '../components/DrawingCanvas'
 import GuessFeed, { type FeedEntry } from '../components/GuessFeed'
+import { MEMORY_HIDE_AFTER_MS } from '../../../shared/protocol'
+import { ChaosBadge, ChaosBanner } from '../components/Chaos'
 import { AiPlayer } from '../lib/aiPlayer'
 import { Guesser } from '../lib/guesser'
+import { isCanvasModifier, rollCanvasModifier, transformFor, type CanvasChaosModifier } from '../lib/chaos'
 import { pickMatchPrompts, TIER_POINTS, type Prompt } from '../lib/prompts'
 import type { Stroke } from '../lib/strokes'
 import './Play.css'
@@ -87,6 +90,11 @@ export default function Play() {
   const [clearToken, setClearToken] = useState(0)
   const [undoToken, setUndoToken] = useState(0)
   const [timeLeftMs, setTimeLeftMs] = useState(ROUND_DURATION_MS)
+  const [chaosEnabled, setChaosEnabled] = useState(
+    () => localStorage.getItem('drawing-arena-chaos') === '1',
+  )
+  const [modifier, setModifier] = useState<CanvasChaosModifier | null>(null)
+  const [memoryHidden, setMemoryHidden] = useState(false)
 
   const guesserRef = useRef<Guesser | null>(null)
   const aiRef = useRef<AiPlayer | null>(null)
@@ -94,6 +102,11 @@ export default function Play() {
   const promptRef = useRef<Prompt | null>(null)
   const roundOpenRef = useRef(false)
   const feedIdRef = useRef(0)
+  const chaosEnabledRef = useRef(chaosEnabled)
+  chaosEnabledRef.current = chaosEnabled
+  const modifierRef = useRef<CanvasChaosModifier | null>(null)
+  const lastModRef = useRef<CanvasChaosModifier | null>(null)
+  const memoryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -130,6 +143,20 @@ export default function Play() {
     (roundIndex: number, prompts: Prompt[]) => {
       const guesser = guesserRef.current
       if (!guesser) return
+      const forced = new URLSearchParams(window.location.search).get('chaos')
+      const next = isCanvasModifier(forced)
+        ? forced
+        : chaosEnabledRef.current
+          ? rollCanvasModifier(roundIndex, lastModRef.current)
+          : null
+      if (next) lastModRef.current = next
+      modifierRef.current = next
+      setModifier(next)
+      setMemoryHidden(false)
+      if (memoryTimerRef.current) {
+        clearTimeout(memoryTimerRef.current)
+        memoryTimerRef.current = null
+      }
       promptRef.current = prompts[roundIndex]
       roundOpenRef.current = true
       roundStartRef.current = performance.now()
@@ -182,7 +209,16 @@ export default function Play() {
     return () => clearInterval(interval)
   }, [phaseName, closeRound])
 
-  const onStrokes = useCallback((strokes: Stroke[]) => aiRef.current?.observe(strokes), [])
+  const onStrokes = useCallback((strokes: Stroke[]) => {
+    if (
+      modifierRef.current === 'memory' &&
+      !memoryTimerRef.current &&
+      strokes.length > 0
+    ) {
+      memoryTimerRef.current = setTimeout(() => setMemoryHidden(true), MEMORY_HIDE_AFTER_MS)
+    }
+    aiRef.current?.observe(strokes)
+  }, [])
 
   const startMatch = () => {
     const guesser = guesserRef.current
@@ -237,6 +273,17 @@ export default function Play() {
             guesses in real time. The faster it recognizes your drawing, the more points you score.
             Difficulty ramps up as you go.
           </p>
+          <label className="play-chaos-toggle">
+            <input
+              type="checkbox"
+              checked={chaosEnabled}
+              onChange={(e) => {
+                setChaosEnabled(e.target.checked)
+                localStorage.setItem('drawing-arena-chaos', e.target.checked ? '1' : '0')
+              }}
+            />
+            chaos rounds <span className="hand-note">(mirror · memory · shaky hands)</span>
+          </label>
           <button className="play-cta" onClick={startMatch}>
             Start match
           </button>
@@ -254,6 +301,7 @@ export default function Play() {
               </span>
             </div>
             <div className="play-round-info">
+              {modifier && <ChaosBadge modifier={modifier} />}
               <span className="play-round-count">
                 round {(state.phase.name === 'drawing' ? state.phase.roundIndex : state.phase.roundIndex) + 1}/
                 {state.prompts.length}
@@ -270,6 +318,8 @@ export default function Play() {
                 clearToken={clearToken}
                 undoToken={undoToken}
                 disabled={state.phase.name !== 'drawing'}
+                transformPoint={transformFor(modifier)}
+                hideInk={memoryHidden}
               />
               {state.phase.name === 'drawing' && (
                 <div className="play-canvas-tools">
@@ -284,6 +334,15 @@ export default function Play() {
                     Give up
                   </button>
                 </div>
+              )}
+              {modifier && state.phase.name === 'drawing' && (
+                <ChaosBanner
+                  modifier={modifier}
+                  roundKey={state.phase.roundIndex}
+                />
+              )}
+              {memoryHidden && state.phase.name === 'drawing' && (
+                <p className="hand-note play-memory-veil">lights out — finish it from memory</p>
               )}
             </div>
             <GuessFeed entries={state.feed} />

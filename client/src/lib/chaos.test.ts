@@ -32,3 +32,13 @@ test('jitter actually moves the pen', () => {
   for (let t = 0; t < 2000; t += 50) spread.add(Math.round(jitterPoint({ x: 200, y: 200, t }, 460).y))
   expect(spread.size).toBeGreaterThan(4)
 })
+
+import { rollCanvasModifier } from './chaos'
+
+test('single-player roll: round 1 clean, ~40% odds, no repeats', () => {
+  expect(rollCanvasModifier(0, null, () => 0)).toBeNull()
+  expect(rollCanvasModifier(2, null, () => 0.9)).toBeNull() // over the 40% chance
+  const rolled = rollCanvasModifier(2, 'mirror', () => 0.1)
+  expect(rolled).not.toBeNull()
+  expect(rolled).not.toBe('mirror')
+})

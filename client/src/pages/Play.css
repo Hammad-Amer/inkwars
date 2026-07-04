@@ -65,6 +65,13 @@
   color: var(--ink-soft);
 }
 
+.play-chaos-toggle {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-block: 0.75rem;
+}
+
 .play-cta {
   font-size: 1.15rem;
   padding: 0.8rem 1.6rem;
@@ -176,6 +183,7 @@
 }
 
 .play-canvas {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -191,6 +199,13 @@
 .play-giveup {
   font-size: 0.85rem;
   padding: 0.4rem 0.8rem;
+}
+
+.play-memory-veil {
+  position: absolute;
+  inset: auto 0 12px 0;
+  text-align: center;
+  pointer-events: none;
 }
 
 /* Round end panel */
