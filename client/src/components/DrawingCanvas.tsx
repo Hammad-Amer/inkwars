@@ -13,6 +13,8 @@ interface DrawingCanvasProps {
   undoToken?: number
   /** When true, pointer input is ignored (e.g. between rounds). */
   disabled?: boolean
+  /** When true, points are recorded but nothing is painted (memory draw modifier). */
+  hideInk?: boolean
   /** Optional transform applied to captured points before storing them. */
   transformPoint?: (p: StrokePoint, canvasSize: number) => StrokePoint
 }
@@ -28,6 +30,7 @@ export default function DrawingCanvas({
   clearToken,
   undoToken,
   disabled = false,
+  hideInk = false,
   transformPoint,
 }: DrawingCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -38,6 +41,8 @@ export default function DrawingCanvas({
   callbacksRef.current = { onStrokesChange, onDrawing }
   const disabledRef = useRef(disabled)
   disabledRef.current = disabled
+  const hideInkRef = useRef(hideInk)
+  hideInkRef.current = hideInk
   const transformRef = useRef(transformPoint)
   transformRef.current = transformPoint
 
@@ -51,12 +56,12 @@ export default function DrawingCanvas({
     callbacksRef.current.onStrokesChange([])
   }, [clearToken])
 
-  useEffect(() => {
+  const repaintAll = () => {
     const canvas = canvasRef.current
-    if (!canvas || !undoToken || strokesRef.current.length === 0) return
-    strokesRef.current = strokesRef.current.slice(0, -1)
+    if (!canvas) return
     const ctx = canvas.getContext('2d')!
     ctx.clearRect(0, 0, canvas.width, canvas.height)
+    if (hideInkRef.current) return // memory draw: keep recording, paint nothing
     const current = currentRef.current
     const toRedraw = current ? [...strokesRef.current, current] : strokesRef.current
     for (const stroke of toRedraw) {
@@ -67,8 +72,19 @@ export default function DrawingCanvas({
       if (stroke.length === 1) ctx.lineTo(stroke[0].x + 0.01, stroke[0].y)
       ctx.stroke()
     }
+  }
+
+  useEffect(() => {
+    if (!undoToken || strokesRef.current.length === 0) return
+    strokesRef.current = strokesRef.current.slice(0, -1)
+    repaintAll()
     callbacksRef.current.onStrokesChange(strokesRef.current)
   }, [undoToken])
+
+  useEffect(() => {
+    hideInkRef.current = hideInk
+    repaintAll() // hiding clears; unhiding (next round) restores
+  }, [hideInk])
 
   useEffect(() => {
     const canvas = canvasRef.current!
@@ -100,11 +116,13 @@ export default function DrawingCanvas({
       canvas.setPointerCapture(e.pointerId)
       const p = toPoint(e)
       currentRef.current = [p]
-      ctx.beginPath()
-      ctx.moveTo(p.x, p.y)
-      // dot for a tap
-      ctx.lineTo(p.x + 0.01, p.y)
-      ctx.stroke()
+      if (!hideInkRef.current) {
+        ctx.beginPath()
+        ctx.moveTo(p.x, p.y)
+        // dot for a tap
+        ctx.lineTo(p.x + 0.01, p.y)
+        ctx.stroke()
+      }
     }
 
     const onPointerMove = (e: PointerEvent) => {
@@ -113,10 +131,12 @@ export default function DrawingCanvas({
       const p = toPoint(e)
       const prev = stroke[stroke.length - 1]
       stroke.push(p)
-      ctx.beginPath()
-      ctx.moveTo(prev.x, prev.y)
-      ctx.lineTo(p.x, p.y)
-      ctx.stroke()
+      if (!hideInkRef.current) {
+        ctx.beginPath()
+        ctx.moveTo(prev.x, prev.y)
+        ctx.lineTo(p.x, p.y)
+        ctx.stroke()
+      }
       callbacksRef.current.onDrawing?.([...strokesRef.current, stroke])
     }
 

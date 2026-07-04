@@ -8,7 +8,7 @@ import { CHAOS_SOME_CHANCE, type ChaosLevel, type ChaosModifier } from '../../sh
 
 const ALL_MODIFIERS: ChaosModifier[] = ['mirror', 'memory', 'jitter', 'simul']
 
-export const ENABLED_MODIFIERS: ChaosModifier[] = ['mirror']
+export const ENABLED_MODIFIERS: ChaosModifier[] = ['mirror', 'memory']
 
 /** validates the CHAOS_FORCE env test hook */
 export function isChaosModifier(v: unknown): v is ChaosModifier {

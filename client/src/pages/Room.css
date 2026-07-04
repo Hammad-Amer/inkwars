@@ -328,6 +328,13 @@
   padding: 0.4rem 0.8rem;
 }
 
+.room-memory-veil {
+  position: absolute;
+  inset: auto 0 12px 0;
+  text-align: center;
+  pointer-events: none;
+}
+
 .room-side {
   display: flex;
   flex-direction: column;

@@ -29,8 +29,11 @@ describe('rollModifier', () => {
     }
   })
   test('single-entry default pool skips a round rather than repeating', () => {
-    // real ENABLED_MODIFIERS is ['mirror'] today; with 'mirror' excluded as
-    // the previous modifier, nothing remains and the round must stay clean
-    expect(rollModifier({ ...base, last: 'mirror', rng: () => 0 })).toBeNull()
+    // with ENABLED_MODIFIERS = ['mirror', 'memory'], exclude 'mirror' and
+    // 'memory' is available, so it rolls. with a true single-entry pool
+    // ['mirror'], excluding 'mirror' leaves nothing and the round stays clean
+    expect(rollModifier({ ...base, last: 'mirror', pool: ['mirror'], rng: () => 0 })).toBeNull()
+    // verify that with two modifiers, the non-previous one is available
+    expect(rollModifier({ ...base, last: 'mirror', rng: () => 0 })).toBe('memory')
   })
 })

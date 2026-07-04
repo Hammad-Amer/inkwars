@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
+  MEMORY_HIDE_AFTER_MS,
   ROUND_DURATION_MS,
   type ChaosLevel,
+  type ChaosModifier,
   type FeedEntry,
   type JoinResult,
   type NormPoint,
@@ -47,6 +49,7 @@ export default function Room() {
   const [liveStrokes, setLiveStrokes] = useState<NormPoint[][]>([])
   const [clearToken, setClearToken] = useState(0)
   const [undoToken, setUndoToken] = useState(0)
+  const [memoryHidden, setMemoryHidden] = useState(false)
 
   const storeRef = useRef(new StrokeStore())
   const senderRef = useRef<StrokeSender | null>(null)
@@ -56,6 +59,8 @@ export default function Room() {
   const lastEmitRef = useRef(0)
   const lastRoundRef = useRef(-1)
   const nudgeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const memoryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const modifierRef = useRef<ChaosModifier | null>(null)
 
   // --- socket lifecycle -------------------------------------------------------
 
@@ -73,6 +78,11 @@ export default function Room() {
         setPrompt(null)
         setGotIt(false)
         setCloseNudge(null)
+        if (memoryTimerRef.current) {
+          clearTimeout(memoryTimerRef.current)
+          memoryTimerRef.current = null
+        }
+        setMemoryHidden(false)
       }
       if (state.phase.name === 'lobby' || state.phase.name === 'match-end') {
         lastRoundRef.current = -1
@@ -124,8 +134,14 @@ export default function Room() {
   const roundEnd = phase?.name === 'round-end' ? phase : null
   const meta = drawing?.round ?? roundEnd?.round ?? null
   const isDrawer = meta !== null && meta.drawerId === playerId
+  modifierRef.current = drawing?.round.modifier ?? null
 
   // --- drawer: stream strokes + host the AI's eyes -------------------------------
+
+  const armMemoryTimer = useCallback((strokes: Stroke[]) => {
+    if (modifierRef.current !== 'memory' || memoryTimerRef.current || strokes.length === 0) return
+    memoryTimerRef.current = setTimeout(() => setMemoryHidden(true), MEMORY_HIDE_AFTER_MS)
+  }, [])
 
   const flushStrokes = useCallback((strokes: Stroke[]) => {
     const canvas = canvasWrapRef.current?.querySelector('canvas')
@@ -135,22 +151,24 @@ export default function Room() {
 
   const onStrokesChange = useCallback(
     (strokes: Stroke[]) => {
+      armMemoryTimer(strokes)
       aiRef.current?.observe(strokes)
       flushStrokes(strokes) // stroke completed or undone — send now
       lastEmitRef.current = performance.now()
     },
-    [flushStrokes],
+    [armMemoryTimer, flushStrokes],
   )
 
   const onDrawingStrokes = useCallback(
     (strokes: Stroke[]) => {
+      armMemoryTimer(strokes)
       aiRef.current?.observe(strokes)
       const now = performance.now()
       if (now - lastEmitRef.current < STROKE_EMIT_INTERVAL_MS) return
       lastEmitRef.current = now
       flushStrokes(strokes)
     },
-    [flushStrokes],
+    [armMemoryTimer, flushStrokes],
   )
 
   const drawingRoundKey = drawing ? drawing.round.roundIndex : -1
@@ -261,8 +279,14 @@ export default function Room() {
                     clearToken={clearToken}
                     undoToken={undoToken}
                     disabled={!drawing}
+                    hideInk={memoryHidden}
                     transformPoint={transformFor(drawing?.round.modifier)}
                   />
+                  {memoryHidden && drawing && (
+                    <p className="hand-note room-memory-veil">
+                      lights out — finish it from memory
+                    </p>
+                  )}
                   {drawing && (
                     <button
                       className="room-undo"
