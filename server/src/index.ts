@@ -46,6 +46,7 @@ io.on('connection', (socket: IoSocket) => {
   })
 
   socket.on('start-match', () => room?.startMatch(socket.id))
+  socket.on('set-chaos', (level) => room?.setChaos(socket.id, level))
   socket.on('stroke-event', (ev) => room?.strokeEvent(socket.id, ev))
   socket.on('guess', (text) => room?.guess(socket.id, String(text ?? '')))
   socket.on('ai-guess', (category, confidence) =>

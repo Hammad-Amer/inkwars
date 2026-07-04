@@ -4,6 +4,8 @@ import {
   AI_PLAYER_NAME,
   ROUND_DURATION_MS,
   ROUND_END_LINGER_MS,
+  type ChaosLevel,
+  type ChaosModifier,
   type ClientToServerEvents,
   type FeedEntry,
   type RoomPhase,
@@ -14,6 +16,8 @@ import {
   type ServerToClientEvents,
   type StrokeEvent,
 } from '../../shared/protocol.js'
+// @ts-expect-error ENABLED_MODIFIERS used in Task 4
+import { ENABLED_MODIFIERS, isChaosModifier, rollModifier } from './chaos.js'
 import { drawerCut, guessPoints, pickMatchPrompts, type Prompt } from './prompts.js'
 
 export type IoServer = Server<ClientToServerEvents, ServerToClientEvents>
@@ -47,6 +51,7 @@ interface ActiveRound {
   gains: Map<string, number>
   /** guards stale timers after a round ends early */
   token: number
+  modifier: ChaosModifier | null
 }
 
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789' // no lookalikes
@@ -79,6 +84,8 @@ export class Room {
   private humans: Human[] = [] // join order; drawer rotation follows it
   private hostId: string | null = null
   private aiScore = 0
+  private chaosLevel: ChaosLevel = 'off'
+  private lastModifier: ChaosModifier | null = null
   private phase: RoomPhase = { name: 'lobby' }
   private round: ActiveRound | null = null
   private roundToken = 0
@@ -145,10 +152,27 @@ export class Room {
     this.startRound(0, totalRounds, prompts)
   }
 
+  setChaos(socketId: string, level: ChaosLevel): void {
+    if (socketId !== this.hostId || this.phase.name !== 'lobby') return
+    if (level !== 'off' && level !== 'some' && level !== 'all') return
+    this.chaosLevel = level
+    this.broadcast()
+  }
+
   private startRound(index: number, totalRounds: number, prompts: Prompt[]): void {
     const drawer = this.humans[index % this.humans.length]
     const prompt = prompts[index]
     const now = Date.now()
+    const forced = process.env.CHAOS_FORCE
+    const modifier = isChaosModifier(forced)
+      ? forced
+      : rollModifier({
+          level: this.chaosLevel,
+          roundIndex: index,
+          humanCount: this.humans.length,
+          last: this.lastModifier,
+        })
+    if (modifier) this.lastModifier = modifier
     this.round = {
       index,
       totalRounds,
@@ -161,9 +185,11 @@ export class Room {
       correct: new Set(),
       gains: new Map(),
       token: ++this.roundToken,
+      modifier,
     }
     this.phase = { name: 'drawing', round: this.roundMeta() }
     this.system(`round ${index + 1} — ${drawer.name} is drawing`)
+    if (modifier) this.system(`CHAOS: ${modifier}`)
     this.broadcast()
     // after the state broadcast: the client resets round-local state (incl.
     // its prompt) when it sees the new round, so the word must arrive second
@@ -302,6 +328,7 @@ export class Room {
       tier: round.prompts[round.index].tier,
       mask: round.word.replace(/[^ ]/g, '_'),
       endsAtMs: round.endsAt,
+      modifier: round.modifier,
     }
   }
 
@@ -322,6 +349,7 @@ export class Room {
       phase: this.phase,
       teamHumans: this.humans.reduce((sum, h) => sum + h.score, 0),
       teamAi: this.aiScore,
+      chaosLevel: this.chaosLevel,
     }
   }
 

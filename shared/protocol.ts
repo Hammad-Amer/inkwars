@@ -22,6 +22,16 @@ export type Tier = 'easy' | 'medium' | 'hard'
 
 export const TIER_POINTS: Record<Tier, number> = { easy: 100, medium: 150, hard: 200 }
 
+// --- chaos modifiers (Phase 4) ----------------------------------------------
+
+export type ChaosModifier = 'mirror' | 'memory' | 'jitter' | 'simul'
+export type ChaosLevel = 'off' | 'some' | 'all'
+
+/** chance that a round rolls a modifier at the 'some' level */
+export const CHAOS_SOME_CHANCE = 0.4
+/** memory draw: drawer's canvas goes dark this long after their first ink */
+export const MEMORY_HIDE_AFTER_MS = 10_000
+
 /** The AI participant's fixed player id — present in every room. */
 export const AI_PLAYER_ID = 'ai'
 export const AI_PLAYER_NAME = 'THE MACHINE'
@@ -49,6 +59,7 @@ export interface RoundMeta {
   mask: string
   /** server epoch ms when the round ends */
   endsAtMs: number
+  modifier: ChaosModifier | null
 }
 
 export interface RoundReveal {
@@ -71,6 +82,7 @@ export interface RoomState {
   /** running humans-vs-AI team totals (sum of member scores) */
   teamHumans: number
   teamAi: number
+  chaosLevel: ChaosLevel
 }
 
 // --- strokes over the wire ---------------------------------------------------
@@ -136,4 +148,6 @@ export interface ClientToServerEvents {
   guess: (text: string) => void
   /** the AI's guess, submitted by the drawer's client (which hosts its eyes) */
   'ai-guess': (category: string, confidence: number) => void
+  /** host only, from the lobby */
+  'set-chaos': (level: ChaosLevel) => void
 }
