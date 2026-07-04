@@ -29,11 +29,32 @@ describe('rollModifier', () => {
     }
   })
   test('single-entry default pool skips a round rather than repeating', () => {
-    // with ENABLED_MODIFIERS = ['mirror', 'memory'], exclude 'mirror' and
-    // 'memory' is available, so it rolls. with a true single-entry pool
-    // ['mirror'], excluding 'mirror' leaves nothing and the round stays clean
+    // with ENABLED_MODIFIERS = ['mirror', 'memory', 'jitter'], excluding
+    // 'mirror' leaves ['memory', 'jitter'], so a roll is still available. with
+    // a true single-entry pool ['mirror'], excluding 'mirror' leaves nothing
+    // and the round stays clean
     expect(rollModifier({ ...base, last: 'mirror', pool: ['mirror'], rng: () => 0 })).toBeNull()
-    // verify that with two modifiers, the non-previous one is available
+    // verify that with the real pool, the first non-previous modifier rolls
     expect(rollModifier({ ...base, last: 'mirror', rng: () => 0 })).toBe('memory')
+  })
+  test('never repeats against the REAL default pool (mirror/memory/jitter)', () => {
+    // no `pool` override: this exercises ENABLED_MODIFIERS itself. for every
+    // possible previous modifier, sweep the rng across the unit interval and
+    // require a roll that is never the previous one, never 'simul' (not
+    // enabled), and never null (two alternatives always remain at level 'all')
+    const enabled = ['mirror', 'memory', 'jitter'] as const
+    for (const last of enabled) {
+      const seen = new Set<string>()
+      for (const r of [0, 0.25, 0.5, 0.75, 0.99]) {
+        const rolled = rollModifier({ level: 'all', roundIndex: 1, humanCount: 2, last, rng: () => r })
+        expect(rolled).not.toBeNull()
+        expect(rolled).not.toBe(last)
+        expect(enabled.filter((m) => m !== last)).toContain(rolled)
+        seen.add(rolled as string)
+      }
+      // both remaining modifiers must actually be rollable — proves the pool
+      // really has three entries, not two
+      expect(seen.size).toBe(2)
+    }
   })
 })
