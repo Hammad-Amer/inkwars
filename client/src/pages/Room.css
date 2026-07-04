@@ -316,6 +316,7 @@
 }
 
 .room-canvas {
+  position: relative; /* anchors the chaos banner overlay */
   display: flex;
   flex-direction: column;
   gap: 0.75rem;

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
   ROUND_DURATION_MS,
+  type ChaosLevel,
   type FeedEntry,
   type JoinResult,
   type NormPoint,
@@ -10,6 +11,7 @@ import {
   type RoundReveal,
   type StrokeEvent,
 } from '../../../shared/protocol'
+import { ChaosBadge, ChaosBanner } from '../components/Chaos'
 import ChatFeed from '../components/ChatFeed'
 import DrawingCanvas from '../components/DrawingCanvas'
 import LiveCanvas from '../components/LiveCanvas'
@@ -213,7 +215,12 @@ export default function Room() {
       </header>
 
       {phase?.name === 'lobby' && (
-        <Lobby room={room} meId={playerId} onStart={() => socket.emit('start-match')} />
+        <Lobby
+          room={room}
+          meId={playerId}
+          onStart={() => socket.emit('start-match')}
+          onSetChaos={(l) => socket.emit('set-chaos', l)}
+        />
       )}
 
       {(drawing || roundEnd) && meta && (
@@ -235,6 +242,7 @@ export default function Room() {
               </div>
             )}
             <div className="room-round-info">
+              {meta.modifier && <ChaosBadge modifier={meta.modifier} />}
               <span className="room-round-count">
                 round {meta.roundIndex + 1}/{meta.totalRounds}
               </span>
@@ -265,6 +273,9 @@ export default function Room() {
                 </>
               ) : (
                 <LiveCanvas strokes={liveStrokes} />
+              )}
+              {drawing?.round.modifier && (
+                <ChaosBanner modifier={drawing.round.modifier} roundKey={drawing.round.roundIndex} />
               )}
             </div>
             <div className="room-side">
@@ -387,7 +398,17 @@ function JoinScreen({
   )
 }
 
-function Lobby({ room, meId, onStart }: { room: RoomState; meId: string; onStart: () => void }) {
+function Lobby({
+  room,
+  meId,
+  onStart,
+  onSetChaos,
+}: {
+  room: RoomState
+  meId: string
+  onStart: () => void
+  onSetChaos: (l: ChaosLevel) => void
+}) {
   const [copied, setCopied] = useState(false)
   const isHost = room.players.some((p) => p.id === meId && p.isHost)
   const humans = room.players.filter((p) => !p.isAi)
@@ -419,6 +440,24 @@ function Lobby({ room, meId, onStart }: { room: RoomState; meId: string; onStart
           </li>
         ))}
       </ul>
+      <div className="chaos-level" aria-label="chaos level">
+        <span className="chaos-level-label">chaos:</span>
+        {(['off', 'some', 'all'] as const).map((level) =>
+          isHost ? (
+            <button
+              key={level}
+              className={`chaos-level-btn${room.chaosLevel === level ? ' is-active' : ''}`}
+              onClick={() => onSetChaos(level)}
+            >
+              {level}
+            </button>
+          ) : (
+            room.chaosLevel === level && (
+              <span key={level} className="chaos-level-readout">{level}</span>
+            )
+          ),
+        )}
+      </div>
       {isHost ? (
         <button className="room-cta" onClick={onStart}>
           Start match

@@ -1,0 +1,40 @@
+.chaos-banner {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  background: var(--acid, #e8ff3c);
+  border: 3px solid var(--ink, #141414);
+  animation: chaos-pop 0.25s ease-out;
+  pointer-events: none;
+}
+.chaos-banner-title {
+  font-family: 'Archivo', sans-serif;
+  font-stretch: expanded;
+  font-size: clamp(1.6rem, 4vw, 2.6rem);
+  letter-spacing: 0.02em;
+}
+.chaos-banner-note { font-size: 0.95rem; }
+.chaos-badge {
+  font-family: 'Archivo', sans-serif;
+  font-size: 0.72rem;
+  font-stretch: expanded;
+  padding: 0.15rem 0.5rem;
+  background: var(--acid, #e8ff3c);
+  border: 2px solid var(--ink, #141414);
+  white-space: nowrap;
+}
+.chaos-level { display: flex; align-items: center; gap: 0.4rem; margin-block: 0.75rem; }
+.chaos-level-label { font-family: 'Caveat', cursive; font-size: 1.1rem; }
+.chaos-level-btn {
+  font-size: 0.8rem;
+  padding: 0.25rem 0.7rem;
+  border: 2px solid var(--ink, #141414);
+  background: transparent;
+}
+.chaos-level-btn.is-active { background: var(--acid, #e8ff3c); }
+@keyframes chaos-pop { from { transform: scale(0.92); opacity: 0; } }
