@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { ChaosModifier } from '../../../shared/protocol'
 import './Chaos.css'
 
-export const CHAOS_COPY: Record<ChaosModifier, { title: string; note: string }> = {
+const CHAOS_COPY: Record<ChaosModifier, { title: string; note: string }> = {
   mirror: { title: 'MIRROR MODE', note: 'the ink lands flipped — steer backwards' },
   memory: { title: 'MEMORY DRAW', note: 'the canvas goes dark 10 seconds in' },
   jitter: { title: 'SHAKY HANDS', note: 'the pen has a mind of its own' },
