@@ -1,4 +1,12 @@
-import { CHAOS_SOME_CHANCE, type ChaosLevel, type ChaosModifier } from '../../shared/protocol.js'
+import {
+  CHAOS_SOME_CHANCE,
+  SIMUL_AI_PICK_BONUS,
+  SIMUL_AI_RECOGNIZE_POINTS,
+  SIMUL_VOTE_POINTS,
+  type ChaosLevel,
+  type ChaosModifier,
+  type SimulEntry,
+} from '../../shared/protocol.js'
 
 /**
  * Chaos modifier selection. Pure so it's testable; the Room feeds it state
@@ -8,7 +16,7 @@ import { CHAOS_SOME_CHANCE, type ChaosLevel, type ChaosModifier } from '../../sh
 
 const ALL_MODIFIERS: ChaosModifier[] = ['mirror', 'memory', 'jitter', 'simul']
 
-export const ENABLED_MODIFIERS: ChaosModifier[] = ['mirror', 'memory', 'jitter']
+export const ENABLED_MODIFIERS: ChaosModifier[] = ['mirror', 'memory', 'jitter', 'simul']
 
 /** validates the CHAOS_FORCE env test hook */
 export function isChaosModifier(v: unknown): v is ChaosModifier {
@@ -34,4 +42,38 @@ export function rollModifier(opts: {
   )
   if (pool.length === 0) return null
   return pool[Math.floor(rng() * pool.length)]
+}
+
+export interface SimulScore {
+  gains: Map<string, number>
+  voteCounts: Map<string, number>
+  aiPickId: string | null
+  aiPoints: number
+}
+
+/** Pure simultaneous-mode scoring: human votes + the AI judge's verdicts. */
+export function scoreSimul(
+  entries: SimulEntry[],
+  votes: Map<string, string>,
+  word: string,
+): SimulScore {
+  const voteCounts = new Map<string, number>()
+  for (const target of votes.values()) voteCounts.set(target, (voteCounts.get(target) ?? 0) + 1)
+  const gains = new Map<string, number>()
+  for (const [target, n] of voteCounts) gains.set(target, n * SIMUL_VOTE_POINTS)
+
+  let aiPickId: string | null = null
+  let bestConfidence = -1
+  let recognized = 0
+  for (const e of entries) {
+    if (e.aiTopGuess !== word) continue
+    recognized += 1
+    // strict > keeps ties on the earlier submission
+    if (e.aiConfidence > bestConfidence) {
+      bestConfidence = e.aiConfidence
+      aiPickId = e.playerId
+    }
+  }
+  if (aiPickId) gains.set(aiPickId, (gains.get(aiPickId) ?? 0) + SIMUL_AI_PICK_BONUS)
+  return { gains, voteCounts, aiPickId, aiPoints: recognized * SIMUL_AI_RECOGNIZE_POINTS }
 }

@@ -52,6 +52,10 @@ io.on('connection', (socket: IoSocket) => {
   socket.on('ai-guess', (category, confidence) =>
     room?.aiGuess(socket.id, String(category ?? ''), Number(confidence) || 0),
   )
+  socket.on('simul-submit', (strokes, aiTopGuess, aiConfidence) =>
+    room?.simulSubmit(socket.id, strokes, String(aiTopGuess ?? ''), Number(aiConfidence) || 0),
+  )
+  socket.on('simul-vote', (targetId) => room?.simulVote(socket.id, String(targetId ?? '')))
   socket.on('disconnect', () => room?.leave(socket.id))
 })
 

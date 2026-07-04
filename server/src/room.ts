@@ -4,20 +4,24 @@ import {
   AI_PLAYER_NAME,
   ROUND_DURATION_MS,
   ROUND_END_LINGER_MS,
+  SIMUL_DRAW_MS,
+  SIMUL_SUBMIT_GRACE_MS,
+  SIMUL_VOTE_MS,
   type ChaosLevel,
   type ChaosModifier,
   type ClientToServerEvents,
   type FeedEntry,
+  type NormPoint,
   type RoomPhase,
   type RoomPlayer,
   type RoomState,
   type RoundMeta,
   type RoundReveal,
   type ServerToClientEvents,
+  type SimulEntry,
   type StrokeEvent,
 } from '../../shared/protocol.js'
-// @ts-expect-error ENABLED_MODIFIERS used in Task 4
-import { ENABLED_MODIFIERS, isChaosModifier, rollModifier } from './chaos.js'
+import { isChaosModifier, rollModifier, scoreSimul } from './chaos.js'
 import { drawerCut, guessPoints, pickMatchPrompts, type Prompt } from './prompts.js'
 
 export type IoServer = Server<ClientToServerEvents, ServerToClientEvents>
@@ -52,10 +56,48 @@ interface ActiveRound {
   /** guards stale timers after a round ends early */
   token: number
   modifier: ChaosModifier | null
+  simul: null | {
+    submissions: SimulEntry[]
+    votes: Map<string, string> // voterId -> targetId
+    closed: boolean
+    /** humans present at round start — late joiners spectate (spec rule) */
+    eligible: Set<string>
+    voteCounts?: Map<string, number>
+    aiPickId?: string | null
+  }
 }
 
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789' // no lookalikes
 const MAX_GUESS_LENGTH = 40
+const MAX_SIMUL_STROKES = 200
+const MAX_SIMUL_POINTS = 20_000
+
+/** e2e hook: SIMUL_DRAW_MS env shortens the draw window */
+function simulDrawMs(): number {
+  return Number(process.env.SIMUL_DRAW_MS ?? 0) || SIMUL_DRAW_MS
+}
+
+/** Distrust the wire: clamp coords, drop junk, cap volume. */
+function sanitizeStrokes(raw: unknown): NormPoint[][] {
+  if (!Array.isArray(raw)) return []
+  const out: NormPoint[][] = []
+  let points = 0
+  for (const stroke of raw.slice(0, MAX_SIMUL_STROKES)) {
+    if (!Array.isArray(stroke)) continue
+    const clean: NormPoint[] = []
+    for (const p of stroke) {
+      if (points >= MAX_SIMUL_POINTS) break
+      const x = Number(p?.x)
+      const y = Number(p?.y)
+      const t = Number(p?.t)
+      if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(t)) continue
+      clean.push({ x: Math.min(1, Math.max(0, x)), y: Math.min(1, Math.max(0, y)), t: Math.max(0, t) })
+      points += 1
+    }
+    if (clean.length > 0) out.push(clean)
+  }
+  return out
+}
 
 function normalizeGuess(text: string): string {
   return text.toLowerCase().trim().replace(/\s+/g, ' ')
@@ -127,7 +169,30 @@ export class Room {
     }
     if (this.hostId === socketId) this.hostId = this.humans[0].socketId
 
-    if (this.round && this.phase.name === 'drawing' && this.round.drawerId === socketId) {
+    if (this.round?.simul && this.phase.name === 'drawing') {
+      // their drawing leaves with them; the rest keep going
+      this.round.simul.submissions = this.round.simul.submissions.filter(
+        (e) => e.playerId !== socketId,
+      )
+      const simulRound = this.round.simul
+      const eligibleNow = this.humans.filter((h) => simulRound.eligible.has(h.socketId)).length
+      if (!simulRound.closed && simulRound.submissions.length >= eligibleNow) {
+        this.closeSubmissions()
+      }
+    } else if (this.round?.simul && this.phase.name === 'simul-vote') {
+      const simul = this.round.simul
+      simul.submissions = simul.submissions.filter((e) => e.playerId !== socketId)
+      simul.votes.delete(socketId)
+      // votes for the departed are void; those voters may vote again
+      for (const [voter, target] of [...simul.votes]) {
+        if (target === socketId) simul.votes.delete(voter)
+      }
+      if (this.phase.name === 'simul-vote') {
+        this.phase = { ...this.phase, gallery: simul.submissions }
+      }
+      if (simul.submissions.length < 2) this.finishVote()
+      else if (simul.votes.size >= this.humans.length) this.finishVote()
+    } else if (this.round && this.phase.name === 'drawing' && this.round.drawerId === socketId) {
       this.endRound('drawer-left')
     } else if (this.round && this.phase.name === 'drawing') {
       // the departed guesser may have been the last one holding the round open
@@ -173,6 +238,8 @@ export class Room {
           last: this.lastModifier,
         })
     if (modifier) this.lastModifier = modifier
+    const isSimul = modifier === 'simul'
+    const durationMs = isSimul ? simulDrawMs() : ROUND_DURATION_MS
     this.round = {
       index,
       totalRounds,
@@ -180,12 +247,20 @@ export class Room {
       drawerId: drawer.socketId,
       word: prompt.name,
       startedAt: now,
-      endsAt: now + ROUND_DURATION_MS,
+      endsAt: now + durationMs,
       strokes: [],
       correct: new Set(),
       gains: new Map(),
       token: ++this.roundToken,
       modifier,
+      simul: isSimul
+        ? {
+            submissions: [],
+            votes: new Map(),
+            closed: false,
+            eligible: new Set(this.humans.map((h) => h.socketId)),
+          }
+        : null,
     }
     this.phase = { name: 'drawing', round: this.roundMeta() }
     this.system(`round ${index + 1} — ${drawer.name} is drawing`)
@@ -193,23 +268,40 @@ export class Room {
     this.broadcast()
     // after the state broadcast: the client resets round-local state (incl.
     // its prompt) when it sees the new round, so the word must arrive second
-    this.io.to(drawer.socketId).emit('your-prompt', prompt.name)
+    if (isSimul) {
+      // everyone draws the same word — it's public inside the round
+      for (const h of this.humans) this.io.to(h.socketId).emit('your-prompt', prompt.name)
+    } else {
+      this.io.to(drawer.socketId).emit('your-prompt', prompt.name)
+    }
 
     const token = this.round.token
-    this.setTimer(() => {
-      if (this.round?.token === token && this.phase.name === 'drawing') this.endRound('timeout')
-    }, ROUND_DURATION_MS)
+    if (isSimul) {
+      this.setTimer(() => {
+        if (this.round?.token === token) this.closeSubmissions()
+      }, durationMs + SIMUL_SUBMIT_GRACE_MS)
+    } else {
+      this.setTimer(() => {
+        if (this.round?.token === token && this.phase.name === 'drawing') this.endRound('timeout')
+      }, durationMs)
+    }
   }
 
   private endRound(reason: RoundReveal['reason']): void {
     const round = this.round
-    if (!round || this.phase.name !== 'drawing') return
+    if (!round || (this.phase.name !== 'drawing' && this.phase.name !== 'simul-vote')) return
     this.clearTimer()
 
     const reveal: RoundReveal = {
       word: round.word,
       reason,
       gains: Object.fromEntries(round.gains),
+      ...(round.simul
+        ? {
+            simulVotes: Object.fromEntries(round.simul.voteCounts ?? []),
+            aiPickId: round.simul.aiPickId ?? null,
+          }
+        : {}),
     }
     const isLast = round.index + 1 >= round.totalRounds
     this.phase = {
@@ -237,6 +329,7 @@ export class Room {
 
   strokeEvent(socketId: string, ev: StrokeEvent): void {
     const round = this.round
+    if (this.round?.simul) return
     if (!round || this.phase.name !== 'drawing' || round.drawerId !== socketId) return
     round.strokes.push(ev)
     // relay to everyone else in the room (the drawer already has it)
@@ -247,6 +340,7 @@ export class Room {
 
   guess(socketId: string, text: string): void {
     const round = this.round
+    if (this.round?.simul) return
     const human = this.humans.find((h) => h.socketId === socketId)
     if (!round || this.phase.name !== 'drawing' || !human) return
     if (socketId === round.drawerId) return // the drawer knows the word
@@ -269,6 +363,7 @@ export class Room {
   /** The AI's guess arrives from the drawer's client, which hosts its eyes. */
   aiGuess(socketId: string, category: string, confidence: number): void {
     const round = this.round
+    if (this.round?.simul) return
     if (!round || this.phase.name !== 'drawing' || round.drawerId !== socketId) return
     if (round.correct.has(AI_PLAYER_ID)) return
 
@@ -280,6 +375,94 @@ export class Room {
     } else {
       this.pushFeed(AI_PLAYER_ID, AI_PLAYER_NAME, true, 'guess', clean)
     }
+  }
+
+  // --- simultaneous mode --------------------------------------------------------
+
+  /** Simultaneous mode: a player's drawing + their client's AI verdict. */
+  simulSubmit(socketId: string, strokes: unknown, aiTopGuess: string, aiConfidence: number): void {
+    const round = this.round
+    const human = this.humans.find((h) => h.socketId === socketId)
+    if (!round?.simul || this.phase.name !== 'drawing' || !human || round.simul.closed) return
+    if (!round.simul.eligible.has(socketId)) return // late joiners spectate this round
+    if (round.simul.submissions.some((e) => e.playerId === socketId)) return
+    round.simul.submissions.push({
+      playerId: socketId,
+      name: human.name,
+      strokes: sanitizeStrokes(strokes),
+      aiTopGuess: normalizeGuess(String(aiTopGuess ?? '')).slice(0, MAX_GUESS_LENGTH),
+      aiConfidence: Math.min(1, Math.max(0, Number(aiConfidence) || 0)),
+    })
+    const eligibleNow = this.humans.filter((h) => round.simul!.eligible.has(h.socketId)).length
+    if (round.simul.submissions.length >= eligibleNow) this.closeSubmissions()
+  }
+
+  private closeSubmissions(): void {
+    const round = this.round
+    if (!round?.simul || round.simul.closed || this.phase.name !== 'drawing') return
+    round.simul.closed = true
+    this.clearTimer()
+    if (round.simul.submissions.length < 2) {
+      // no contest — not enough drawings to vote on
+      this.endRound('simul-done')
+      return
+    }
+    this.phase = {
+      name: 'simul-vote',
+      round: this.roundMeta(),
+      gallery: round.simul.submissions,
+      votesEndAtMs: Date.now() + SIMUL_VOTE_MS,
+    }
+    this.system('pens down — vote for the best drawing')
+    this.broadcast()
+    // the judge shares its read on every canvas (it never saw the word)
+    for (const e of round.simul.submissions) {
+      this.pushFeed(
+        AI_PLAYER_ID, AI_PLAYER_NAME, true, 'guess',
+        e.aiTopGuess ? `${e.name}'s looks like "${e.aiTopGuess}" to me` : `${e.name} drew… something?`,
+      )
+    }
+    const token = round.token
+    this.setTimer(() => {
+      if (this.round?.token === token) this.finishVote()
+    }, SIMUL_VOTE_MS)
+  }
+
+  simulVote(socketId: string, targetId: string): void {
+    const round = this.round
+    if (!round?.simul || this.phase.name !== 'simul-vote') return
+    if (!this.humans.some((h) => h.socketId === socketId)) return
+    if (socketId === targetId || round.simul.votes.has(socketId)) return
+    if (!round.simul.submissions.some((e) => e.playerId === targetId)) return
+    round.simul.votes.set(socketId, targetId)
+    if (round.simul.votes.size >= this.humans.length) this.finishVote()
+  }
+
+  private finishVote(): void {
+    const round = this.round
+    if (!round?.simul || this.phase.name !== 'simul-vote') return
+    this.clearTimer()
+    const { gains, voteCounts, aiPickId, aiPoints } = scoreSimul(
+      round.simul.submissions, round.simul.votes, round.word,
+    )
+    for (const [playerId, pts] of gains) {
+      const human = this.humans.find((h) => h.socketId === playerId)
+      if (human) {
+        human.score += pts
+        round.gains.set(playerId, pts)
+      }
+    }
+    if (aiPoints > 0) {
+      this.aiScore += aiPoints
+      round.gains.set(AI_PLAYER_ID, aiPoints)
+    }
+    round.simul.voteCounts = voteCounts
+    round.simul.aiPickId = aiPickId
+    if (aiPickId) {
+      const pick = round.simul.submissions.find((e) => e.playerId === aiPickId)
+      this.pushFeed(AI_PLAYER_ID, AI_PLAYER_NAME, true, 'guess', `my vote: ${pick?.name ?? '?'} — that one's real`)
+    }
+    this.endRound('simul-done')
   }
 
   private scoreCorrectGuess(playerId: string, name: string, isAi: boolean): void {

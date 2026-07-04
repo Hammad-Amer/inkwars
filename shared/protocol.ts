@@ -32,6 +32,13 @@ export const CHAOS_SOME_CHANCE = 0.4
 /** memory draw: drawer's canvas goes dark this long after their first ink */
 export const MEMORY_HIDE_AFTER_MS = 10_000
 
+export const SIMUL_DRAW_MS = 45_000
+export const SIMUL_VOTE_MS = 20_000
+export const SIMUL_SUBMIT_GRACE_MS = 2_000
+export const SIMUL_VOTE_POINTS = 60
+export const SIMUL_AI_PICK_BONUS = 40
+export const SIMUL_AI_RECOGNIZE_POINTS = 25
+
 /** The AI participant's fixed player id — present in every room. */
 export const AI_PLAYER_ID = 'ai'
 export const AI_PLAYER_NAME = 'THE MACHINE'
@@ -62,16 +69,31 @@ export interface RoundMeta {
   modifier: ChaosModifier | null
 }
 
+/** one player's simultaneous-mode drawing, revealed at vote time */
+export interface SimulEntry {
+  playerId: string
+  name: string
+  strokes: NormPoint[][]
+  /** that client's own AI verdict on its canvas (normalized guess text) */
+  aiTopGuess: string
+  aiConfidence: number
+}
+
 export interface RoundReveal {
   word: string
-  reason: 'all-guessed' | 'timeout' | 'drawer-left'
+  reason: 'all-guessed' | 'timeout' | 'drawer-left' | 'simul-done'
   /** points gained this round, by player id (absent = 0) */
   gains: Record<string, number>
+  /** simultaneous mode: vote counts by canvas owner's player id */
+  simulVotes?: Record<string, number>
+  /** simultaneous mode: the AI judge's pick, if any canvas was recognized */
+  aiPickId?: string | null
 }
 
 export type RoomPhase =
   | { name: 'lobby' }
   | { name: 'drawing'; round: RoundMeta }
+  | { name: 'simul-vote'; round: RoundMeta; gallery: SimulEntry[]; votesEndAtMs: number }
   | { name: 'round-end'; round: RoundMeta; reveal: RoundReveal; nextAtMs: number }
   | { name: 'match-end' }
 
@@ -150,4 +172,8 @@ export interface ClientToServerEvents {
   'ai-guess': (category: string, confidence: number) => void
   /** host only, from the lobby */
   'set-chaos': (level: ChaosLevel) => void
+  /** simultaneous mode: my drawing + my client's AI verdict, at the deadline */
+  'simul-submit': (strokes: NormPoint[][], aiTopGuess: string, aiConfidence: number) => void
+  /** simultaneous mode: vote for the best drawing (not your own) */
+  'simul-vote': (targetPlayerId: string) => void
 }
