@@ -27,8 +27,11 @@ export function rollModifier(opts: {
   // matches open readable: the first round is always a classic one
   if (opts.level === 'off' || opts.roundIndex === 0) return null
   if (opts.level === 'some' && rng() >= CHAOS_SOME_CHANCE) return null
-  let pool = (opts.pool ?? ENABLED_MODIFIERS).filter((m) => m !== 'simul' || opts.humanCount >= 2)
-  if (pool.length > 1) pool = pool.filter((m) => m !== opts.last)
+  // a clean round beats a repeat: 'last' is excluded unconditionally, so a
+  // single-entry pool skips a round rather than rolling the same modifier twice
+  const pool = (opts.pool ?? ENABLED_MODIFIERS).filter(
+    (m) => (m !== 'simul' || opts.humanCount >= 2) && m !== opts.last,
+  )
   if (pool.length === 0) return null
   return pool[Math.floor(rng() * pool.length)]
 }

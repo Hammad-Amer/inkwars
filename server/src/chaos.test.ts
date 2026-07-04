@@ -28,4 +28,9 @@ describe('rollModifier', () => {
       expect(rollModifier({ ...base, humanCount: 1, pool })).not.toBe('simul')
     }
   })
+  test('single-entry default pool skips a round rather than repeating', () => {
+    // real ENABLED_MODIFIERS is ['mirror'] today; with 'mirror' excluded as
+    // the previous modifier, nothing remains and the round must stay clean
+    expect(rollModifier({ ...base, last: 'mirror', rng: () => 0 })).toBeNull()
+  })
 })
