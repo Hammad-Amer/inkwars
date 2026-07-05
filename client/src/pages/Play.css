@@ -285,6 +285,12 @@
   width: min(100%, 640px);
 }
 
+.play-recap .play-summary-word,
+.play-recap .play-summary-points {
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
 .play-summary-points {
   font-family: var(--font-mono);
   min-width: 5ch;
