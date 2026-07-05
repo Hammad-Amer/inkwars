@@ -18,6 +18,7 @@ import { ChaosBadge, ChaosBanner } from '../components/Chaos'
 import ChatFeed from '../components/ChatFeed'
 import DrawingCanvas from '../components/DrawingCanvas'
 import LiveCanvas from '../components/LiveCanvas'
+import ReplayCanvas from '../components/ReplayCanvas'
 import { AiPlayer } from '../lib/aiPlayer'
 import { Guesser } from '../lib/guesser'
 import { transformFor } from '../lib/chaos'
@@ -29,6 +30,14 @@ import './Room.css'
 
 const STROKE_EMIT_INTERVAL_MS = 50 // mid-stroke batching; stroke ends flush immediately
 const NAME_STORAGE_KEY = 'drawing-arena-name'
+
+/** one finished round's drawing, kept client-side for replays (Phase 5) */
+interface ArchivedRound {
+  roundIndex: number
+  word: string
+  drawerName: string
+  strokes: NormPoint[][]
+}
 
 /**
  * Multiplayer: join/create a room, lobby, and the shared round loop.
@@ -68,6 +77,9 @@ export default function Room() {
   const simulSubmittedRef = useRef(false)
   // joined mid-simul-round: spectate it (the server ignores late submissions anyway)
   const spectatingRoundRef = useRef(-1)
+  const archiveRef = useRef(new Map<number, ArchivedRound>())
+  const drawerStrokesRef = useRef<Stroke[]>([])
+  const galleryRef = useRef<SimulEntry[]>([])
 
   // --- socket lifecycle -------------------------------------------------------
 
@@ -90,9 +102,50 @@ export default function Room() {
           memoryTimerRef.current = null
         }
         setMemoryHidden(false)
+        drawerStrokesRef.current = []
+        if (state.phase.round.roundIndex === 0) archiveRef.current.clear() // new match
       }
       if (state.phase.name === 'lobby' || state.phase.name === 'match-end') {
         lastRoundRef.current = -1
+      }
+      if (state.phase.name === 'simul-vote') galleryRef.current = state.phase.gallery
+      if (state.phase.name === 'round-end' && !archiveRef.current.has(state.phase.round.roundIndex)) {
+        const { round, reveal } = state.phase
+        if (round.modifier === 'simul') {
+          // the recap keeps the round's vote winner (tie → earliest gallery entry)
+          const gallery = galleryRef.current
+          if (gallery.length > 0) {
+            const votes = reveal.simulVotes ?? {}
+            let winner = gallery[0]
+            for (const e of gallery) {
+              if ((votes[e.playerId] ?? 0) > (votes[winner.playerId] ?? 0)) winner = e
+            }
+            archiveRef.current.set(round.roundIndex, {
+              roundIndex: round.roundIndex,
+              word: reveal.word,
+              drawerName: winner.name,
+              strokes: winner.strokes,
+            })
+          }
+          galleryRef.current = []
+        } else {
+          // drawer holds the original px strokes; everyone else has the relayed vectors
+          let strokes: NormPoint[][] = []
+          if (round.drawerId === s.id) {
+            const size = canvasWrapRef.current?.querySelector('canvas')?.getBoundingClientRect().width ?? 0
+            if (size) strokes = normalizeStrokes(drawerStrokesRef.current, size)
+          } else {
+            strokes = storeRef.current.visibleStrokes()
+          }
+          if (strokes.length > 0) {
+            archiveRef.current.set(round.roundIndex, {
+              roundIndex: round.roundIndex,
+              word: reveal.word,
+              drawerName: state.players.find((p) => p.id === round.drawerId)?.name ?? '?',
+              strokes,
+            })
+          }
+        }
       }
       setRoom(state)
     }
@@ -162,6 +215,7 @@ export default function Room() {
 
   const onStrokesChange = useCallback(
     (strokes: Stroke[]) => {
+      drawerStrokesRef.current = strokes
       armMemoryTimer(strokes)
       aiRef.current?.observe(strokes)
       flushStrokes(strokes) // stroke completed or undone — send now
@@ -172,6 +226,7 @@ export default function Room() {
 
   const onDrawingStrokes = useCallback(
     (strokes: Stroke[]) => {
+      drawerStrokesRef.current = strokes
       armMemoryTimer(strokes)
       aiRef.current?.observe(strokes)
       const now = performance.now()
@@ -397,13 +452,19 @@ export default function Room() {
               nextAtMs={roundEnd.nextAtMs}
               isLast={meta.roundIndex + 1 >= meta.totalRounds}
               room={room}
+              replay={archiveRef.current.get(roundEnd.round.roundIndex)?.strokes ?? null}
             />
           )}
         </section>
       )}
 
       {phase?.name === 'match-end' && (
-        <MatchEnd room={room} meId={playerId} onRestart={() => socket.emit('start-match')} />
+        <MatchEnd
+          room={room}
+          meId={playerId}
+          onRestart={() => socket.emit('start-match')}
+          recap={[...archiveRef.current.values()].sort((a, b) => a.roundIndex - b.roundIndex)}
+        />
       )}
     </main>
   )
@@ -624,11 +685,13 @@ function RoundEndPanel({
   nextAtMs,
   isLast,
   room,
+  replay,
 }: {
   reveal: RoundReveal
   nextAtMs: number
   isLast: boolean
   room: RoomState
+  replay: NormPoint[][] | null
 }) {
   const gains = room.players
     .map((p) => ({ ...p, gain: reveal.gains[p.id] ?? 0 }))
@@ -648,6 +711,11 @@ function RoundEndPanel({
       <p>
         The word was <strong>{reveal.word}</strong>
       </p>
+      {replay && replay.length > 0 && (
+        <div className="room-panel-replay">
+          <ReplayCanvas strokes={replay} />
+        </div>
+      )}
       {gains.length > 0 ? (
         <ul className="room-panel-gains">
           {gains.map((p) => (
@@ -685,10 +753,12 @@ function MatchEnd({
   room,
   meId,
   onRestart,
+  recap,
 }: {
   room: RoomState
   meId: string
   onRestart: () => void
+  recap: ArchivedRound[]
 }) {
   const isHost = room.players.some((p) => p.id === meId && p.isHost)
   const humansWon = room.teamHumans > room.teamAi
@@ -705,6 +775,21 @@ function MatchEnd({
         <span className="room-teams-vs">vs</span>
         <span className="room-teams-ai">{room.teamAi} AI</span>
       </p>
+      {recap.length > 0 && (
+        <ol className="room-recap" aria-label="round replays">
+          {recap.map((r) => (
+            <li key={r.roundIndex}>
+              <figure className="replay-card">
+                <ReplayCanvas strokes={r.strokes} />
+                <figcaption>
+                  <span>{r.word}</span>
+                  <span className="hand-note">{r.drawerName}</span>
+                </figcaption>
+              </figure>
+            </li>
+          ))}
+        </ol>
+      )}
       <ol className="room-summary-players">
         {sorted.map((p) => (
           <li key={p.id} className={p.isAi ? 'is-ai' : ''}>

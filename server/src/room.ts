@@ -77,6 +77,11 @@ function simulDrawMs(): number {
   return Number(process.env.SIMUL_DRAW_MS ?? 0) || SIMUL_DRAW_MS
 }
 
+/** e2e hook: ROUND_DURATION_MS env shortens normal rounds */
+function roundDurationMs(): number {
+  return Number(process.env.ROUND_DURATION_MS ?? 0) || ROUND_DURATION_MS
+}
+
 /** Distrust the wire: clamp coords, drop junk, cap volume. */
 function sanitizeStrokes(raw: unknown): NormPoint[][] {
   if (!Array.isArray(raw)) return []
@@ -239,7 +244,7 @@ export class Room {
         })
     if (modifier) this.lastModifier = modifier
     const isSimul = modifier === 'simul'
-    const durationMs = isSimul ? simulDrawMs() : ROUND_DURATION_MS
+    const durationMs = isSimul ? simulDrawMs() : roundDurationMs()
     this.round = {
       index,
       totalRounds,

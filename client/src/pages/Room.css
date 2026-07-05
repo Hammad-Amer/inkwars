@@ -421,6 +421,11 @@
   color: var(--ai);
 }
 
+.room-panel-replay {
+  width: 180px;
+  margin: 0.75rem auto;
+}
+
 /* Match end */
 
 .room-summary {
@@ -445,6 +450,16 @@
   text-transform: uppercase;
   font-size: 1.3rem;
   margin-bottom: 1.5rem;
+}
+
+.room-recap {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  list-style: none;
+  padding: 0;
+  margin-block: 1.5rem;
+  width: min(100%, 640px);
 }
 
 .room-summary-players {
