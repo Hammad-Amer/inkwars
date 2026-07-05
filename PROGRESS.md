@@ -31,7 +31,7 @@ custom CNN trained on Quick Draw running client-side, commentary runs in-browser
 - [x] **Phase 2 — Single-player core loop** (2026-07-04 pacing rework awaits re-playtest)
 - [x] **Phase 3 — Multiplayer** (rooms, Socket.io, AI as participant — browser-verified 2-player)
 - [x] **Phase 4 — Chaos modifiers** (mirror, memory, jitter, simultaneous mode — e2e-verified, awaits playtest)
-- [ ] Phase 5 — Replay system (vector strokes)
+- [x] **Phase 5 — Replay system** (round-end + match-recap replays — e2e-verified, awaits playtest)
 - [ ] Phase 6 — AI commentary (WebLLM)
 - [ ] Phase 7 — Ranked daily mode (Elo, SQLite)
 - [ ] Phase 8 — Cross-device mode (stretch)
@@ -59,19 +59,20 @@ custom CNN trained on Quick Draw running client-side, commentary runs in-browser
 - `training/venv/` has CUDA torch; `training/data/` has all 100 categories (~2 GB).
 - Playwright + Chromium installed (`client` devDep) for browser-driving verification — reuse it
   in later phases.
-- `client/e2e/` — committed e2e suite (harness + 7 scripts, run `node client/e2e/<name>.e2e.mjs`
+- `client/e2e/` — committed e2e suite (harness + 9 scripts, run `node client/e2e/<name>.e2e.mjs`
   from repo root); vitest unit tests in both packages (`npm test` in `client/` and `server/`).
 - Chaos modifiers live in every room (host sets off/some/all in the lobby) and on `/play`
   ("chaos rounds" toggle).
+- Replays are live in both modes: `/play` round-end panel + match recap, and rooms' round-end
+  panel + `.room-recap` match-end grid. Animated auto-looping playback of the actual vector
+  strokes for every round that had ink; empty rounds show no card/replay.
 
 ## Next Immediate Step
 
-**User playtests Phase 4** (start both: `cd server && npm run dev` and `cd client && npm run
-dev`; host a room, set chaos to `all` in the lobby, play — or force one with the `CHAOS_FORCE`
-env var on the server / `?chaos=mirror|memory|jitter` on `/play`; `SIMUL_DRAW_MS=20000` makes
-simul demo rounds quick). Also still pending from earlier: the re-playtest verdict on the
-2026-07-04 AI pacing rework. Then, on the user's "go": Phase 5 (replay system — vector strokes
-are already the wire format, so this is playback UI).
+**User playtests Phase 5** (both modes — `/play` and a hosted room — including the recap grid
+at match end; start both: `cd server && npm run dev` and `cd client && npm run dev`). Also still
+pending from earlier: the Phase 4 playtest verdict, and the re-playtest verdict on the
+2026-07-04 AI pacing rework. Then, on the user's "go": Phase 6 (AI commentary via WebLLM).
 
 ## Phase 2 notes (what was built)
 
@@ -162,6 +163,47 @@ are already the wire format, so this is playback UI).
   `node client/e2e/<name>.e2e.mjs` from repo root. All green 2026-07-05 along with both
   typechecks and lint.
 
+## Phase 5 notes (what was built)
+
+- Spec + plan: `docs/superpowers/specs/2026-07-05-replay-system-design.md`,
+  `docs/superpowers/plans/2026-07-05-replay-system.md` (5 tasks, all done).
+- **Timeline compression** (`client/src/lib/replay.ts`, `buildReplayTimeline`, pure + unit-
+  tested): raw stroke timestamps capture how a round was really drawn — including long thinking
+  pauses — so a replay first compresses the dead air, then rescales to a fixed clip. Pass 1
+  walks strokes in order, keeping each stroke's internal point-to-point rhythm but capping the
+  inter-stroke gap at `REPLAY_GAP_CAP_MS` (400ms); pass 2 linearly scales the whole compressed
+  timeline so its last point lands exactly on `REPLAY_DURATION_MS` (4000ms). A defensive pass
+  clamps any out-of-order timestamps (the wire sanitizer preserves order but doesn't prove it).
+  `REPLAY_LOOP_PAUSE_MS` (700ms) is the hold after a finished drawing before the loop restarts —
+  not part of the compressed timeline itself, just the player's idle gap.
+- **`ReplayCanvas.tsx`**: takes raw normalized strokes, builds the compressed timeline once per
+  `strokes` change, then drives a `requestAnimationFrame` loop that redraws the visible prefix
+  every frame (full redraw per frame — cheap at doodle point counts, same approach as
+  `LiveCanvas`). The in-progress stroke's tip is linearly interpolated between its surrounding
+  points so growth looks continuous regardless of frame rate. Elapsed time is
+  `(now - startedAt) % (durationMs + REPLAY_LOOP_PAUSE_MS)` clamped to `durationMs`, so the
+  finished drawing holds during the pause window before looping. Auto-loops forever; restarts
+  cleanly whenever the `strokes` prop changes (round switch, recap remount).
+- **Where replays appear**: `/play` round-end panel (that round's replay) and match recap card
+  grid (one card per round that had ink — empty/given-up rounds get no card, not a blank
+  canvas); rooms' round-end panel (drawer and guessers all see the same replay) and the
+  match-end `.room-recap` grid, same empty-round rule.
+- **Client-side archive** (`Room.tsx`, `archiveRef` — a `Map<roundIndex, ArchivedRound>`, no
+  server involvement): populated on entering `round-end` for a not-yet-archived round index,
+  cleared when `roundIndex === 0` (start of a new match, since round indices restart). Stroke
+  source depends on role: the drawer holds original px-space strokes in `drawerStrokesRef` and
+  normalizes them against the canvas's rendered size; everyone else reads the already-normalized
+  vectors out of `StrokeStore.visibleStrokes()`. For `simul` rounds there's no single "the
+  drawer" — the archive instead stores the gallery's vote winner (most votes, tie → earliest
+  gallery entry), matching the scoring rule from Phase 4.
+- **Test hook**: `server/src/room.ts` reads `ROUND_DURATION_MS` from the environment (falls back
+  to the real constant), mirroring the existing `SIMUL_DRAW_MS` pattern, so e2e scripts can
+  shorten normal drawing rounds instead of waiting out the full timer.
+- **Tests**: two new e2e scripts, `replay-play` and `replay-room` (round-end replay renders and
+  animates, no replay for empty rounds, recap shows a card per drawn round and animates) —
+  `client/e2e/` is now 9 scripts total. One review fix along the way: recap caption typography
+  regressed and was restored (`0e0b7d0`).
+
 ## Open Questions / Unsure About
 
 - AI guess cadence/threshold values (`aiPlayer.ts` knobs) are game-feel numbers — need the
@@ -219,3 +261,11 @@ are already the wire format, so this is playback UI).
   draw, jitter, `/play` chaos toggle, simultaneous mode (server + client). Final regression
   pass 2026-07-05: 7 e2e scripts, 28 unit tests, typechecks, lint — all green. Phase 4 awaits
   the user's playtest verdict; Phase 5 awaits the user's go.
+- **2026-07-05** — Phase 5 built via subagent-driven development (5 tasks, TDD + e2e): timeline
+  compression (`replay.ts`), `ReplayCanvas` (rAF auto-loop, interpolated tip), `/play`
+  round-end + recap integration, room round-end + match-recap integration. One review fix along
+  the way (recap caption typography regression, restored). Final regression pass: all 9 e2e
+  scripts (including the two new `replay-play`/`replay-room` scripts) green, 11 client + 22
+  server unit tests, both typechecks, lint — all clean. Phase 5 awaits the user's playtest
+  verdict (both modes, including the match-end recap grid); Phase 6 (AI commentary via WebLLM)
+  awaits the user's go.
