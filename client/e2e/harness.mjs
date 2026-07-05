@@ -84,9 +84,9 @@ export async function drawLine(page, from, to, steps = 30) {
   await page.mouse.up()
 }
 
-/** Inked-pixel bounding box + count on the page's first canvas, CSS px. */
-export async function inkBounds(page) {
-  return page.locator('canvas').first().evaluate((canvas) => {
+/** Inked-pixel bounding box + count on the page's first matching canvas, CSS px. */
+export async function inkBounds(page, selector = 'canvas') {
+  return page.locator(selector).first().evaluate((canvas) => {
     const { width, height } = canvas
     const data = canvas.getContext('2d').getImageData(0, 0, width, height).data
     let minX = Infinity, minY = Infinity, maxX = -1, maxY = -1, count = 0

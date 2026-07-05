@@ -1,0 +1,26 @@
+.replay-canvas {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  background: #fff;
+  border: 2px solid var(--ink, #141414);
+}
+
+/* shared recap-card styling (used by /play summary and the room recap) */
+.replay-card {
+  margin: 0;
+  border: 3px solid var(--ink, #141414);
+  background: #fff;
+  padding: 0.5rem;
+}
+.replay-card .replay-canvas {
+  border: none;
+}
+.replay-card figcaption {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+  font-size: 0.85rem;
+}
