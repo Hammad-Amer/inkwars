@@ -30,7 +30,7 @@ custom CNN trained on Quick Draw running client-side, commentary runs in-browser
 - [x] **Phase 1 — Train & validate the AI guesser** (87.6% top-1 / 96.6% top-5 val; browser-verified)
 - [x] **Phase 2 — Single-player core loop** (2026-07-04 pacing rework awaits re-playtest)
 - [x] **Phase 3 — Multiplayer** (rooms, Socket.io, AI as participant — browser-verified 2-player)
-- [ ] Phase 4 — Chaos modifiers
+- [x] **Phase 4 — Chaos modifiers** (mirror, memory, jitter, simultaneous mode — e2e-verified, awaits playtest)
 - [ ] Phase 5 — Replay system (vector strokes)
 - [ ] Phase 6 — AI commentary (WebLLM)
 - [ ] Phase 7 — Ranked daily mode (Elo, SQLite)
@@ -59,14 +59,19 @@ custom CNN trained on Quick Draw running client-side, commentary runs in-browser
 - `training/venv/` has CUDA torch; `training/data/` has all 100 categories (~2 GB).
 - Playwright + Chromium installed (`client` devDep) for browser-driving verification — reuse it
   in later phases.
+- `client/e2e/` — committed e2e suite (harness + 7 scripts, run `node client/e2e/<name>.e2e.mjs`
+  from repo root); vitest unit tests in both packages (`npm test` in `client/` and `server/`).
+- Chaos modifiers live in every room (host sets off/some/all in the lobby) and on `/play`
+  ("chaos rounds" toggle).
 
 ## Next Immediate Step
 
-**User playtests Phase 3** (start both: `cd server && npm run dev` and `cd client && npm run
-dev`, then open `/rooms` in two browser windows — or share the invite link on the LAN). Also
-still pending: the re-playtest verdict on the 2026-07-04 AI pacing rework (`/play` or any
-multiplayer round where you draw). Then, on the user's "go": Phase 4 (chaos modifiers, one at
-a time, showing each before the next).
+**User playtests Phase 4** (start both: `cd server && npm run dev` and `cd client && npm run
+dev`; host a room, set chaos to `all` in the lobby, play — or force one with the `CHAOS_FORCE`
+env var on the server / `?chaos=mirror|memory|jitter` on `/play`; `SIMUL_DRAW_MS=20000` makes
+simul demo rounds quick). Also still pending from earlier: the re-playtest verdict on the
+2026-07-04 AI pacing rework. Then, on the user's "go": Phase 5 (replay system — vector strokes
+are already the wire format, so this is playback UI).
 
 ## Phase 2 notes (what was built)
 
@@ -123,6 +128,40 @@ a time, showing each before the next).
   ("sun?") landed in both feeds, close-guess nudge, correct human guess scored 95 + 30 drawer
   cut, round-end reveal, drawer rotation to player B. Zero console errors.
 
+## Phase 4 notes (what was built)
+
+- Spec + plan: `docs/superpowers/specs/2026-07-04-chaos-modifiers-design.md`,
+  `docs/superpowers/plans/2026-07-04-chaos-modifiers.md` (9 tasks, all done).
+- **Modifier system**: the server rolls a modifier per round (`server/src/chaos.ts`,
+  `rollModifier` — pure + unit-tested) and stamps it into `RoundMeta.modifier`; the host picks
+  the chaos level in the lobby (`off`/`some`/`all`, `'set-chaos'` event). Rules: round 1 always
+  clean, never the same modifier twice in a row, `some` = 40% odds (`CHAOS_SOME_CHANCE`),
+  `simul` needs ≥2 humans. Banner + badge UI in `client/src/components/Chaos.tsx`.
+- **Mirror & jitter** are capture-time point transforms (`client/src/lib/chaos.ts`,
+  `transformFor` → `DrawingCanvas`'s `transformPoint` prop): the flip/wobble happens before a
+  point is recorded, so relay, the AI's view, and Phase 5 replays just see the real drawing.
+  Jitter = two incommensurate sines per axis keyed on the point timestamp (deterministic in t,
+  unit-tested; amp ~1.2% of canvas).
+- **Memory draw** is display-only: `DrawingCanvas`'s `hideInk` prop paints nothing while still
+  recording; the drawer's canvas goes dark `MEMORY_HIDE_AFTER_MS` (10s) after their first ink;
+  guessers see everything throughout.
+- **Simultaneous mode** is a distinct round flow: everyone gets the word, draws privately
+  (`SIMUL_DRAW_MS` 45s), each client auto-submits at the deadline with its own AI verdict
+  (top guess + confidence via `'simul-submit'`), then a gallery vote (`SIMUL_VOTE_MS` 20s,
+  can't vote for yourself). Scoring (`scoreSimul`, unit-tested): 60/vote received, +40 to the
+  AI's pick (most-confident correct canvas, tie → earlier submission), AI team +25 per canvas
+  it recognized. Late joiners spectate the in-flight round; the server sanitizes submitted
+  strokes (clamped coords, volume caps).
+- **/play chaos**: "chaos rounds" toggle on the intro screen (persisted in localStorage) rolls
+  the three canvas modifiers with the same odds/no-repeat rules (`rollCanvasModifier`).
+- **Test hooks**: server env `CHAOS_FORCE=<modifier>` forces every round, `SIMUL_DRAW_MS=<ms>`
+  shortens the simul draw window, `/play?chaos=<modifier>` forces single-player rounds.
+- **Tests**: vitest in both packages (`npm test`); committed e2e suite `client/e2e/` —
+  `harness.mjs` (spawns server + vite on :5199, Playwright helpers) + 7 scripts (`basic`,
+  `chaos-level`, `mirror`, `memory`, `jitter`, `play-chaos`, `simul`), each run with
+  `node client/e2e/<name>.e2e.mjs` from repo root. All green 2026-07-05 along with both
+  typechecks and lint.
+
 ## Open Questions / Unsure About
 
 - AI guess cadence/threshold values (`aiPlayer.ts` knobs) are game-feel numbers — need the
@@ -175,3 +214,8 @@ a time, showing each before the next).
   participant hosted on the drawer's client, humans-vs-AI team strip). One race found & fixed
   in verification: `your-prompt` must be sent after the round's `room-state` broadcast.
   Category-expansion idea recorded under Deferred Ideas. Phase 4 awaits the user's go.
+- **2026-07-04 → 2026-07-05** — Phase 4 on the user's go: chaos modifiers built task-by-task
+  (TDD + committed e2e per modifier): server roll logic + lobby chaos control, mirror, memory
+  draw, jitter, `/play` chaos toggle, simultaneous mode (server + client). Final regression
+  pass 2026-07-05: 7 e2e scripts, 28 unit tests, typechecks, lint — all green. Phase 4 awaits
+  the user's playtest verdict; Phase 5 awaits the user's go.
