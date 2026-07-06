@@ -36,7 +36,7 @@ custom CNN trained on Quick Draw running client-side, commentary runs in-browser
   roast/recap lines instead of WebLLM — built + e2e-verified, awaits playtest)
 - [ ] ~~Phase 7 — Ranked daily mode~~ (**cut 2026-07-06, user-approved** — game complete without it)
 - [ ] ~~Phase 8 — Cross-device mode~~ (**cut 2026-07-06, user-approved** — was a stretch goal)
-- [ ] Phase 9 — Polish pass (lite: mobile responsiveness, motion polish, a11y basics; no sound)
+- [x] **Phase 9 — Polish pass** (lite scope delivered 2026-07-06: mobile, motion, a11y; no sound)
 - [ ] Phase 10 — Hardening & deploy (**target: Render free tier**, one web service serving
   server + built client; deferred hardening items stay deferred — friends-scale game)
 
@@ -74,10 +74,10 @@ custom CNN trained on Quick Draw running client-side, commentary runs in-browser
 
 ## Next Immediate Step
 
-**Final-day plan (2026-07-06):** ✅ Phase 6-lite commentary → ② Phase 9-lite polish (mobile
-responsiveness, motion, a11y basics; no sound) → ③ Phase 10: README + Render free-tier deploy.
-**One combined user playtest** covers all pending verdicts (Phase 2 AI pacing, Phase 4 chaos,
-Phase 5 replays, Phase 6 commentary): `cd server && npm run dev` + `cd client && npm run dev`.
+**Final-day plan (2026-07-06):** ✅ Phase 6-lite commentary → ✅ Phase 9-lite polish →
+③ Phase 10: README + Render free-tier deploy. **One combined user playtest** covers all
+pending verdicts (Phase 2 AI pacing, Phase 4 chaos, Phase 5 replays, Phase 6 commentary):
+`cd server && npm run dev` + `cd client && npm run dev`.
 
 ## Phase 2 notes (what was built)
 
@@ -234,6 +234,23 @@ Phase 5 replays, Phase 6 commentary): `cd server && npm run dev` + `cd client &&
   server unit tests, both typechecks, lint, `replay-play`/`replay-room`/`basic`/`simul` e2e —
   all green.
 
+## Phase 9 notes (what was built)
+
+- Spec + plan: `docs/superpowers/specs/2026-07-06-polish-pass-design.md`,
+  `docs/superpowers/plans/2026-07-06-polish-pass.md` (4 tasks, inline execution).
+- **A11y**: global `:focus-visible` ring (3px acid, one rule in `index.css`, local duplicates
+  removed); `prefers-reduced-motion: reduce` disables all CSS animation/transition and
+  `ReplayCanvas` skips its rAF loop to paint the finished drawing statically (browser-verified
+  with Playwright's `reducedMotion: 'reduce'`); interactive `DrawingCanvas` got an aria-label.
+- **Mobile (≤480px)**: both arenas wrap the prompt bar and step down word/mask/timer sizes;
+  tighter page gutters and round-end panel padding; home + join-screen title `clamp()` floors
+  lowered (both clipped at 390px — found in the screenshot sweep, now 0px horizontal overflow).
+  Simul gallery already collapses to one column (grid math, no change needed).
+- **Motion**: match summaries rise in like the round panels; recap cards fade up with a 60ms
+  stagger (capped at 5); `/play` score value bumps on change (span keyed on the score).
+- Verified: mobile screenshot sweep at 390×844 reviewed, reduced-motion + focus-ring browser
+  checks, full regression (below).
+
 ## Open Questions / Unsure About
 
 - AI guess cadence/threshold values (`aiPlayer.ts` knobs) are game-feel numbers — need the
@@ -305,3 +322,8 @@ Phase 5 replays, Phase 6 commentary): `cd server && npm run dev` + `cd client &&
   commentary engine + MachineQuip/MachineAnalysis components + both mode integrations.
   Regression all green. Remaining: Phase 9-lite polish, Phase 10 README + Render deploy, and
   the user's single combined playtest (Phases 2/4/5/6 verdicts).
+- **2026-07-06 (later)** — Phase 9-lite polish built inline (spec → plan → 4 tasks): global
+  focus ring, reduced-motion support (CSS + static ReplayCanvas), drawing-canvas label,
+  ≤480px pass for both arenas + title clamp fixes (home/join titles clipped at 390px, caught
+  by the screenshot sweep), match-end entrances + recap stagger + score bump. Full regression:
+  45 unit tests, both typechecks, lint, all 9 e2e scripts green. Remaining: Phase 10.
