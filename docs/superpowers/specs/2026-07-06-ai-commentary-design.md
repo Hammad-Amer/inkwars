@@ -41,7 +41,9 @@ roundQuip(facts: RoundFacts, usedIds: Set<string>, seed: number): { id: string; 
 matchRoast(facts: MatchFacts, seed: number): string[]   // 2–4 lines
 ```
 
-- **Line bank:** ~40–60 entries `{ id, when(facts), tier, render(facts) }`. Tier =
+- **Line bank:** starter bank of ~18 entries `{ id, when(facts), tier, render(facts) }`
+  covering every fact shape (quality over volume; growing it after playtest is a
+  one-line-per-joke change). Tier =
   specificity (e.g. "AI guessed it in <5s" beats generic "AI solved it"). Selection:
   filter eligible → keep highest tier present → seeded-pick (mulberry32-style LCG is fine)
   → never reuse an id within a match (`usedIds`).
