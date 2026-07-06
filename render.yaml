@@ -6,7 +6,9 @@ services:
     runtime: node
     plan: free
     healthCheckPath: /health
-    buildCommand: npm ci --include=dev --prefix client && npm ci --include=dev --prefix server && npm run build --prefix client && npm run build --prefix server
+    # npm install (not ci): the lockfiles were generated on Windows and have a known
+    # npm hole around platform-specific optional deps (@emnapi/*) that strict ci rejects
+    buildCommand: npm install --include=dev --prefix client && npm install --include=dev --prefix server && npm run build --prefix client && npm run build --prefix server
     startCommand: node server/dist/server/src/index.js
     envVars:
       # prompts.ts resolves the manifest relative to the compiled file, which is wrong
