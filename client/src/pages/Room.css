@@ -63,7 +63,8 @@
 }
 
 .room-join h1 {
-  font-size: clamp(3rem, 9vw, 5.5rem);
+  /* floor low enough that TOGETHER fits a 390px phone */
+  font-size: clamp(2.5rem, 9vw, 5.5rem);
   margin-bottom: 2rem;
 }
 
@@ -493,3 +494,35 @@
 .simul-entry canvas { width: 100%; aspect-ratio: 1; }
 .simul-vote-btn { width: 100%; margin-top: 0.4rem; }
 .room-simul-spectate { display: grid; place-items: center; min-height: 200px; }
+
+/* phone-width pass: wrap the prompt bar, tighten gutters and panels */
+@media (max-width: 480px) {
+  .room {
+    padding: 1.25rem 1rem 3rem;
+  }
+
+  .room-prompt-bar {
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+  }
+
+  .room-prompt-word {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    font-size: 1.2rem;
+  }
+
+  .room-prompt-mask {
+    font-size: 1rem;
+    letter-spacing: 0.15em;
+  }
+
+  .room-timer {
+    font-size: 1.2rem;
+  }
+
+  .room-panel {
+    padding: 1.25rem;
+  }
+}

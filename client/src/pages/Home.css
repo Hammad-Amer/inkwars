@@ -10,7 +10,8 @@
 }
 
 .home-title {
-  font-size: clamp(4rem, 14vw, 9rem);
+  /* floor low enough that DRAWING fits a 390px phone */
+  font-size: clamp(3rem, 12vw, 9rem);
 }
 
 .home-vs {

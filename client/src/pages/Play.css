@@ -296,3 +296,30 @@
   min-width: 5ch;
   text-align: right;
 }
+
+/* phone-width pass: wrap the prompt bar, tighten gutters and panels */
+@media (max-width: 480px) {
+  .play {
+    padding: 1.25rem 1rem 3rem;
+  }
+
+  .play-prompt-bar {
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+  }
+
+  .play-prompt-word {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    font-size: 1.2rem;
+  }
+
+  .play-timer {
+    font-size: 1.2rem;
+  }
+
+  .play-panel {
+    padding: 1.25rem;
+  }
+}
