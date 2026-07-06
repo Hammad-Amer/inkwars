@@ -32,8 +32,8 @@ custom CNN trained on Quick Draw running client-side, commentary runs in-browser
 - [x] **Phase 3 — Multiplayer** (rooms, Socket.io, AI as participant — browser-verified 2-player)
 - [x] **Phase 4 — Chaos modifiers** (mirror, memory, jitter, simultaneous mode — e2e-verified, awaits playtest)
 - [x] **Phase 5 — Replay system** (round-end + match-recap replays — e2e-verified, awaits playtest)
-- [ ] Phase 6 — AI commentary (**descoped 2026-07-06, user-approved**: templated data-driven
-  roast/recap lines from match stats instead of WebLLM — no model download, works everywhere)
+- [x] **Phase 6 — AI commentary** (**descoped 2026-07-06, user-approved**: templated data-driven
+  roast/recap lines instead of WebLLM — built + e2e-verified, awaits playtest)
 - [ ] ~~Phase 7 — Ranked daily mode~~ (**cut 2026-07-06, user-approved** — game complete without it)
 - [ ] ~~Phase 8 — Cross-device mode~~ (**cut 2026-07-06, user-approved** — was a stretch goal)
 - [ ] Phase 9 — Polish pass (lite: mobile responsiveness, motion polish, a11y basics; no sound)
@@ -68,13 +68,16 @@ custom CNN trained on Quick Draw running client-side, commentary runs in-browser
 - Replays are live in both modes: `/play` round-end panel + match recap, and rooms' round-end
   panel + `.room-recap` match-end grid. Animated auto-looping playback of the actual vector
   strokes for every round that had ink; empty rounds show no card/replay.
+- THE MACHINE talks: a deadpan quip on every round-end panel and a 2-4 line "POST-MATCH
+  ANALYSIS" roast at match end, both modes — templated from real match facts (wrong guesses,
+  solve times, modifiers), no LLM (`client/src/lib/commentary.ts`).
 
 ## Next Immediate Step
 
-**Final-day plan (2026-07-06, user wants to finish today):** ① Phase 6-lite templated
-commentary → ② Phase 9-lite polish → ③ Phase 10: README + Render free-tier deploy. In
-parallel, **one combined user playtest** covers the three pending verdicts (Phase 2 AI pacing
-rework, Phase 4 chaos, Phase 5 replays): `cd server && npm run dev` + `cd client && npm run dev`.
+**Final-day plan (2026-07-06):** ✅ Phase 6-lite commentary → ② Phase 9-lite polish (mobile
+responsiveness, motion, a11y basics; no sound) → ③ Phase 10: README + Render free-tier deploy.
+**One combined user playtest** covers all pending verdicts (Phase 2 AI pacing, Phase 4 chaos,
+Phase 5 replays, Phase 6 commentary): `cd server && npm run dev` + `cd client && npm run dev`.
 
 ## Phase 2 notes (what was built)
 
@@ -206,6 +209,31 @@ rework, Phase 4 chaos, Phase 5 replays): `cd server && npm run dev` + `cd client
   `client/e2e/` is now 9 scripts total. One review fix along the way: recap caption typography
   regressed and was restored (`0e0b7d0`).
 
+## Phase 6 notes (what was built)
+
+- Spec + plan: `docs/superpowers/specs/2026-07-06-ai-commentary-design.md`,
+  `docs/superpowers/plans/2026-07-06-ai-commentary.md` (4 tasks, all done, inline execution).
+- **Engine** (`client/src/lib/commentary.ts`, pure + unit-tested, 12 tests): a tiered,
+  condition-matched line bank (~18 starter lines — every fact shape covered; growing it is
+  one line per joke). `roundQuip(facts, usedIds, seed)` picks from the most specific eligible
+  tier, seeded (mulberry32), never repeats an id within a match (falls back to reuse only when
+  every eligible line is spent). `matchRoast(matchFacts, seed)` = opener (keyed on
+  winner/margin, or solo recognized-count) + up to 2 superlatives (most-confused round,
+  fastest solve, unsolved list, chaos count) + closer — always 2-4 lines. Voice: deadpan
+  machine superiority; error-report self-deprecation when the AI loses. Simul rounds get
+  dedicated tier-3 quips (no single drawer, so drawing quips never apply).
+- **Components** (`client/src/components/Commentary.tsx` + `.css`): `MachineQuip` /
+  `MachineAnalysis`, system-log styling — Space Mono, `--ai` blue, `> ` prefix.
+- **Facts collection is per-client presentation** — zero server/protocol changes. `/play`:
+  `RoundResult` gained `aiWrongGuesses`/`modifier`/`quip` (quip chosen in `closeRound`);
+  rooms: `factsRef` map built at round-end from feed-tracking refs (`aiWrongRef`,
+  `firstCorrectRef` → outcome/solver), mirrors the Phase 5 archive pattern, cleared at
+  `roundIndex === 0`.
+- **Tests**: `replay-play`/`replay-room` e2e extended (quip at round end on both drawer and
+  guesser screens, 2-4 analysis lines at match end). Regression 2026-07-06: 23 client + 22
+  server unit tests, both typechecks, lint, `replay-play`/`replay-room`/`basic`/`simul` e2e —
+  all green.
+
 ## Open Questions / Unsure About
 
 - AI guess cadence/threshold values (`aiPlayer.ts` knobs) are game-feel numbers — need the
@@ -271,3 +299,9 @@ rework, Phase 4 chaos, Phase 5 replays): `cd server && npm run dev` + `cd client
   server unit tests, both typechecks, lint — all clean. Phase 5 awaits the user's playtest
   verdict (both modes, including the match-end recap grid); Phase 6 (AI commentary via WebLLM)
   awaits the user's go.
+- **2026-07-06** — Final-day descope agreed with the user: finish today. Phase 7 (ranked) and
+  Phase 8 (cross-device) cut; Phase 6 descoped from WebLLM to templated commentary; Phase 9
+  lite; deploy target Render free tier. Phase 6-lite built inline (spec → plan → 4 tasks):
+  commentary engine + MachineQuip/MachineAnalysis components + both mode integrations.
+  Regression all green. Remaining: Phase 9-lite polish, Phase 10 README + Render deploy, and
+  the user's single combined playtest (Phases 2/4/5/6 verdicts).
