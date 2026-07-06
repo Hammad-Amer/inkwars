@@ -36,9 +36,7 @@ export default function ReplayCanvas({
     const startedAt = performance.now()
     let raf = 0
 
-    const frame = () => {
-      // past durationMs the finished drawing holds until the loop restarts
-      const elapsed = Math.min((performance.now() - startedAt) % cycleMs, durationMs)
+    const drawAt = (elapsed: number) => {
       ctx.clearRect(0, 0, size, size)
       ctx.lineCap = 'round'
       ctx.lineJoin = 'round'
@@ -66,6 +64,17 @@ export default function ReplayCanvas({
         if (tip === 0) ctx.lineTo(stroke[0].x * size + 0.01, stroke[0].y * size) // lone dot
         ctx.stroke()
       }
+    }
+
+    // reduced motion: show the finished drawing, skip the animation loop
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      drawAt(durationMs)
+      return
+    }
+
+    const frame = () => {
+      // past durationMs the finished drawing holds until the loop restarts
+      drawAt(Math.min((performance.now() - startedAt) % cycleMs, durationMs))
       raf = requestAnimationFrame(frame)
     }
     raf = requestAnimationFrame(frame)

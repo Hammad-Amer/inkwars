@@ -160,5 +160,11 @@ export default function DrawingCanvas({
     }
   }, [])
 
-  return <canvas ref={canvasRef} className={`drawing-canvas${disabled ? ' is-disabled' : ''}`} />
+  return (
+    <canvas
+      ref={canvasRef}
+      className={`drawing-canvas${disabled ? ' is-disabled' : ''}`}
+      aria-label="drawing canvas"
+    />
+  )
 }

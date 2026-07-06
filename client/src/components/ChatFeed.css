@@ -51,11 +51,6 @@
   padding: 0.45rem 0.6rem;
 }
 
-.chat-feed-input:focus-visible {
-  outline: 3px solid var(--acid);
-  outline-offset: 1px;
-}
-
 .chat-feed-input:disabled {
   opacity: 0.5;
 }

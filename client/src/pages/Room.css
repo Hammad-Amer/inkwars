@@ -97,11 +97,6 @@
   padding: 0.55rem 0.7rem;
 }
 
-.room-join-card input:focus-visible {
-  outline: 3px solid var(--acid);
-  outline-offset: 1px;
-}
-
 .room-cta {
   font-size: 1.15rem;
   padding: 0.8rem 1.6rem;
