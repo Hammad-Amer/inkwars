@@ -1,0 +1,17 @@
+# One free web service: the game server + the built client (same origin).
+# Deploy: Render dashboard -> New + -> Blueprint -> select this repo -> Apply.
+services:
+  - type: web
+    name: inkwars
+    runtime: node
+    plan: free
+    healthCheckPath: /health
+    buildCommand: npm ci --include=dev --prefix client && npm ci --include=dev --prefix server && npm run build --prefix client && npm run build --prefix server
+    startCommand: node server/dist/server/src/index.js
+    envVars:
+      # prompts.ts resolves the manifest relative to the compiled file, which is wrong
+      # under dist/ — point it at the built client copy instead (cwd-relative).
+      - key: MODEL_MANIFEST_PATH
+        value: client/dist/model/manifest.json
+      - key: NODE_VERSION
+        value: 22.16.0
