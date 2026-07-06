@@ -37,8 +37,8 @@ custom CNN trained on Quick Draw running client-side, commentary runs in-browser
 - [ ] ~~Phase 7 — Ranked daily mode~~ (**cut 2026-07-06, user-approved** — game complete without it)
 - [ ] ~~Phase 8 — Cross-device mode~~ (**cut 2026-07-06, user-approved** — was a stretch goal)
 - [x] **Phase 9 — Polish pass** (lite scope delivered 2026-07-06: mobile, motion, a11y; no sound)
-- [ ] Phase 10 — Hardening & deploy (**target: Render free tier**, one web service serving
-  server + built client; deferred hardening items stay deferred — friends-scale game)
+- [x] **Phase 10 — Hardening & deploy** (code complete + prod-smoke-verified 2026-07-06;
+  awaiting the user's Render Blueprint click-through, then live-URL verification)
 
 ## Current State — what works right now
 
@@ -74,10 +74,12 @@ custom CNN trained on Quick Draw running client-side, commentary runs in-browser
 
 ## Next Immediate Step
 
-**Final-day plan (2026-07-06):** ✅ Phase 6-lite commentary → ✅ Phase 9-lite polish →
-③ Phase 10: README + Render free-tier deploy. **One combined user playtest** covers all
-pending verdicts (Phase 2 AI pacing, Phase 4 chaos, Phase 5 replays, Phase 6 commentary):
-`cd server && npm run dev` + `cd client && npm run dev`.
+**All code is done and pushed.** Two things remain, both the user's:
+1. **Deploy click-through**: dashboard.render.com → sign in with GitHub → New + → Blueprint →
+   select `Hammad-Amer/inkwars` → Apply (free plan). Then paste the URL back for live
+   verification + README live-URL fill.
+2. **One combined playtest** (Phases 2/4/5/6 verdicts): `cd server && npm run dev` +
+   `cd client && npm run dev`.
 
 ## Phase 2 notes (what was built)
 
@@ -251,6 +253,26 @@ pending verdicts (Phase 2 AI pacing, Phase 4 chaos, Phase 5 replays, Phase 6 com
 - Verified: mobile screenshot sweep at 390×844 reviewed, reduced-motion + focus-ring browser
   checks, full regression (below).
 
+## Phase 10 notes (what was built)
+
+- Spec + plan: `docs/superpowers/specs/2026-07-06-deploy-design.md`,
+  `docs/superpowers/plans/2026-07-06-deploy.md`.
+- **Single-service deploy**: the server statically serves `client/dist` with an SPA fallback
+  when it exists (`CLIENT_DIST` overridable), so the client's same-origin `io()` needs no
+  config. `render.yaml` Blueprint: free web service, health check `/health`,
+  `npm ci --include=dev` builds (Render sets NODE_ENV=production),
+  `MODEL_MANIFEST_PATH=client/dist/model/manifest.json` (prompts.ts resolves relative to the
+  compiled file, which is wrong under dist/ — env override is the fix).
+- **Prod bug found & fixed by the smoke test**: with no root package.json, tsc emitted
+  `dist/shared/protocol.js` as CommonJS while the server package is ESM — dev (tsx) masked it.
+  Root `package.json` with `"type": "module"` fixes the emit.
+- **Verified**: local prod simulation (compiled server, no Vite, Render-identical env) —
+  health 100 categories, home renders, `/play` deep link + model load + match start, room
+  created over same-origin socket, zero page errors.
+- **README** rewritten (features, stack, dev/prod/deploy/training/tests; live-URL placeholder).
+- Deferred hardening (recorded, intentionally out of scope): reconnect-with-identity, rate
+  limiting, server-side AI verification, Postgres upgrade path.
+
 ## Open Questions / Unsure About
 
 - AI guess cadence/threshold values (`aiPlayer.ts` knobs) are game-feel numbers — need the
@@ -327,3 +349,9 @@ pending verdicts (Phase 2 AI pacing, Phase 4 chaos, Phase 5 replays, Phase 6 com
   ≤480px pass for both arenas + title clamp fixes (home/join titles clipped at 390px, caught
   by the screenshot sweep), match-end entrances + recap stagger + score bump. Full regression:
   45 unit tests, both typechecks, lint, all 9 e2e scripts green. Remaining: Phase 10.
+- **2026-07-06 (evening)** — Phase 10: single-service deploy prep. Server serves the built
+  client (SPA fallback), `render.yaml` Blueprint for Render's free tier, README rewritten.
+  The prod smoke test (compiled server, Render-identical env, Playwright) caught a real
+  ESM/CJS emit bug in `dist/shared` — fixed with a root `"type": "module"`. Everything pushed
+  to `Hammad-Amer/inkwars`. **Project code-complete**; remaining: user's Render click-through
+  (then live verification + README URL), and the combined playtest verdicts.
