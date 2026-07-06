@@ -32,11 +32,13 @@ custom CNN trained on Quick Draw running client-side, commentary runs in-browser
 - [x] **Phase 3 — Multiplayer** (rooms, Socket.io, AI as participant — browser-verified 2-player)
 - [x] **Phase 4 — Chaos modifiers** (mirror, memory, jitter, simultaneous mode — e2e-verified, awaits playtest)
 - [x] **Phase 5 — Replay system** (round-end + match-recap replays — e2e-verified, awaits playtest)
-- [ ] Phase 6 — AI commentary (WebLLM)
-- [ ] Phase 7 — Ranked daily mode (Elo, SQLite)
-- [ ] Phase 8 — Cross-device mode (stretch)
-- [ ] Phase 9 — Polish pass
-- [ ] Phase 10 — Hardening & deploy
+- [ ] Phase 6 — AI commentary (**descoped 2026-07-06, user-approved**: templated data-driven
+  roast/recap lines from match stats instead of WebLLM — no model download, works everywhere)
+- [ ] ~~Phase 7 — Ranked daily mode~~ (**cut 2026-07-06, user-approved** — game complete without it)
+- [ ] ~~Phase 8 — Cross-device mode~~ (**cut 2026-07-06, user-approved** — was a stretch goal)
+- [ ] Phase 9 — Polish pass (lite: mobile responsiveness, motion polish, a11y basics; no sound)
+- [ ] Phase 10 — Hardening & deploy (**target: Render free tier**, one web service serving
+  server + built client; deferred hardening items stay deferred — friends-scale game)
 
 ## Current State — what works right now
 
@@ -69,10 +71,10 @@ custom CNN trained on Quick Draw running client-side, commentary runs in-browser
 
 ## Next Immediate Step
 
-**User playtests Phase 5** (both modes — `/play` and a hosted room — including the recap grid
-at match end; start both: `cd server && npm run dev` and `cd client && npm run dev`). Also still
-pending from earlier: the Phase 4 playtest verdict, and the re-playtest verdict on the
-2026-07-04 AI pacing rework. Then, on the user's "go": Phase 6 (AI commentary via WebLLM).
+**Final-day plan (2026-07-06, user wants to finish today):** ① Phase 6-lite templated
+commentary → ② Phase 9-lite polish → ③ Phase 10: README + Render free-tier deploy. In
+parallel, **one combined user playtest** covers the three pending verdicts (Phase 2 AI pacing
+rework, Phase 4 chaos, Phase 5 replays): `cd server && npm run dev` + `cd client && npm run dev`.
 
 ## Phase 2 notes (what was built)
 
