@@ -1,4 +1,6 @@
+import { existsSync } from 'node:fs'
 import { createServer } from 'node:http'
+import path from 'node:path'
 import express from 'express'
 import { Server } from 'socket.io'
 import type { ClientToServerEvents, ServerToClientEvents } from '../../shared/protocol.js'
@@ -22,6 +24,18 @@ const categories = loadCategories()
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', categories: categories.length })
 })
+
+// production: one service serves the built client too (same origin as the socket)
+const clientDist = process.env.CLIENT_DIST ?? path.resolve('client/dist')
+if (existsSync(path.join(clientDist, 'index.html'))) {
+  app.use(express.static(clientDist))
+  // SPA fallback for client routes (/play, /rooms/:code, …)
+  app.use((req, res, next) => {
+    if (req.method !== 'GET' || req.path.startsWith('/socket.io')) return next()
+    res.sendFile(path.join(clientDist, 'index.html'))
+  })
+  console.log(`serving client from ${clientDist}`)
+}
 
 io.on('connection', (socket: IoSocket) => {
   // a socket belongs to at most one room; joining is one-shot per connection
