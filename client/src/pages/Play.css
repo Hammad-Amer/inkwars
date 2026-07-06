@@ -297,6 +297,23 @@
   text-align: right;
 }
 
+/* match summary rises in like the round panel */
+.play-summary {
+  animation: play-panel-in 200ms ease-out;
+}
+
+/* the total score does a little bump when points land (element is keyed on the value) */
+.play-score-value {
+  display: inline-block;
+  animation: play-score-bump 180ms ease-out;
+}
+
+@keyframes play-score-bump {
+  40% {
+    transform: scale(1.18);
+  }
+}
+
 /* phone-width pass: wrap the prompt bar, tighten gutters and panels */
 @media (max-width: 480px) {
   .play {

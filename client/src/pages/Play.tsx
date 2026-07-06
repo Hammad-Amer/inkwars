@@ -286,7 +286,9 @@ export default function Play() {
         {state.phase.name !== 'loading' && state.phase.name !== 'missing' && (
           <div className="play-score" aria-label="total score">
             <span className="play-score-label">score</span>
-            <span className="play-score-value">{totalScore}</span>
+            <span className="play-score-value" key={totalScore}>
+              {totalScore}
+            </span>
           </div>
         )}
       </header>

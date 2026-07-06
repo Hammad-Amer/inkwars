@@ -24,3 +24,32 @@
   margin-top: 0.35rem;
   font-size: 0.85rem;
 }
+
+/* recap cards fade up with a small stagger */
+.play-recap li,
+.room-recap li {
+  animation: replay-card-in 300ms ease-out backwards;
+}
+.play-recap li:nth-child(2),
+.room-recap li:nth-child(2) {
+  animation-delay: 60ms;
+}
+.play-recap li:nth-child(3),
+.room-recap li:nth-child(3) {
+  animation-delay: 120ms;
+}
+.play-recap li:nth-child(4),
+.room-recap li:nth-child(4) {
+  animation-delay: 180ms;
+}
+.play-recap li:nth-child(5),
+.room-recap li:nth-child(5) {
+  animation-delay: 240ms;
+}
+
+@keyframes replay-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
