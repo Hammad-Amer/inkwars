@@ -5,7 +5,8 @@ AI opponent watches the canvas and guesses alongside the humans.** The guesser i
 CNN trained on [Google Quick Draw](https://quickdraw.withgoogle.com/data) that runs entirely
 in the browser via ONNX Runtime Web — no paid APIs anywhere, nothing leaves your machine.
 
-<!-- LIVE_URL: add the Render URL here after the first deploy -->
+**▶ Play it live: https://inkwars.onrender.com** *(free tier — first visit after an idle
+spell takes ~30–60 s to wake)*
 
 ## What's in the game
 

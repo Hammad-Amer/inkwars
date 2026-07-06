@@ -37,8 +37,8 @@ custom CNN trained on Quick Draw running client-side, commentary runs in-browser
 - [ ] ~~Phase 7 — Ranked daily mode~~ (**cut 2026-07-06, user-approved** — game complete without it)
 - [ ] ~~Phase 8 — Cross-device mode~~ (**cut 2026-07-06, user-approved** — was a stretch goal)
 - [x] **Phase 9 — Polish pass** (lite scope delivered 2026-07-06: mobile, motion, a11y; no sound)
-- [x] **Phase 10 — Hardening & deploy** (code complete + prod-smoke-verified 2026-07-06;
-  awaiting the user's Render Blueprint click-through, then live-URL verification)
+- [x] **Phase 10 — Hardening & deploy** (**LIVE at https://inkwars.onrender.com**,
+  browser-verified 2026-07-06: health, home, /play model load, live room creation)
 
 ## Current State — what works right now
 
@@ -74,12 +74,10 @@ custom CNN trained on Quick Draw running client-side, commentary runs in-browser
 
 ## Next Immediate Step
 
-**All code is done and pushed.** Two things remain, both the user's:
-1. **Deploy click-through**: dashboard.render.com → sign in with GitHub → New + → Blueprint →
-   select `Hammad-Amer/inkwars` → Apply (free plan). Then paste the URL back for live
-   verification + README live-URL fill.
-2. **One combined playtest** (Phases 2/4/5/6 verdicts): `cd server && npm run dev` +
-   `cd client && npm run dev`.
+**The project is shipped: https://inkwars.onrender.com** (live-verified). The only open
+thread is the user's combined playtest verdict (Phases 2/4/5/6: AI pacing, chaos, replays,
+commentary) — playable on the live URL or locally. Any tuning from that feedback would be
+the last touch.
 
 ## Phase 2 notes (what was built)
 
@@ -355,3 +353,11 @@ custom CNN trained on Quick Draw running client-side, commentary runs in-browser
   ESM/CJS emit bug in `dist/shared` — fixed with a root `"type": "module"`. Everything pushed
   to `Hammad-Amer/inkwars`. **Project code-complete**; remaining: user's Render click-through
   (then live verification + README URL), and the combined playtest verdicts.
+- **2026-07-06 (night) — SHIPPED.** Two deploy-log fixes (Playwright browser download skipped;
+  `npm install` instead of `npm ci` — the Windows-generated lockfiles have npm's known
+  optional-dep hole around `@emnapi/*` that Linux `npm ci` rejects, and regenerating on
+  Windows makes the lock *less* complete, so install-mode is the correct fix). First deploy
+  succeeded after that: **https://inkwars.onrender.com**, verified live with Playwright
+  (health 100 categories, home, /play deep link + model load + match start, room W9P6 created
+  over the live socket, zero page errors). README stamped with the URL. Remaining: the user's
+  combined playtest verdict (Phases 2/4/5/6).
