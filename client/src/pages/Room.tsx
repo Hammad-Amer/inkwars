@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
   MEMORY_HIDE_AFTER_MS,
@@ -16,10 +16,12 @@ import {
 } from '../../../shared/protocol'
 import { ChaosBadge, ChaosBanner } from '../components/Chaos'
 import ChatFeed from '../components/ChatFeed'
+import { MachineAnalysis, MachineQuip } from '../components/Commentary'
 import DrawingCanvas from '../components/DrawingCanvas'
 import LiveCanvas from '../components/LiveCanvas'
 import ReplayCanvas from '../components/ReplayCanvas'
 import { AiPlayer } from '../lib/aiPlayer'
+import { matchRoast, roundQuip, type RoundFacts } from '../lib/commentary'
 import { Guesser } from '../lib/guesser'
 import { transformFor } from '../lib/chaos'
 import { strokesToModelInput } from '../lib/preprocess'
@@ -61,6 +63,7 @@ export default function Room() {
   const [clearToken, setClearToken] = useState(0)
   const [undoToken, setUndoToken] = useState(0)
   const [memoryHidden, setMemoryHidden] = useState(false)
+  const [quip, setQuip] = useState<string | null>(null)
 
   const storeRef = useRef(new StrokeStore())
   const senderRef = useRef<StrokeSender | null>(null)
@@ -78,6 +81,10 @@ export default function Room() {
   // joined mid-simul-round: spectate it (the server ignores late submissions anyway)
   const spectatingRoundRef = useRef(-1)
   const archiveRef = useRef(new Map<number, ArchivedRound>())
+  const aiWrongRef = useRef<string[]>([])
+  const firstCorrectRef = useRef<{ isAi: boolean; name: string; atMs: number } | null>(null)
+  const factsRef = useRef(new Map<number, RoundFacts>())
+  const usedQuipIdsRef = useRef(new Set<string>())
   const drawerStrokesRef = useRef<Stroke[]>([])
   const galleryRef = useRef<SimulEntry[]>([])
 
@@ -103,12 +110,38 @@ export default function Room() {
         }
         setMemoryHidden(false)
         drawerStrokesRef.current = []
-        if (state.phase.round.roundIndex === 0) archiveRef.current.clear() // new match
+        aiWrongRef.current = []
+        firstCorrectRef.current = null
+        setQuip(null)
+        if (state.phase.round.roundIndex === 0) {
+          archiveRef.current.clear() // new match
+          factsRef.current.clear()
+          usedQuipIdsRef.current.clear()
+        }
       }
       if (state.phase.name === 'lobby' || state.phase.name === 'match-end') {
         lastRoundRef.current = -1
       }
       if (state.phase.name === 'simul-vote') galleryRef.current = state.phase.gallery
+      if (state.phase.name === 'round-end' && !factsRef.current.has(state.phase.round.roundIndex)) {
+        // Phase 6: freeze this round's commentary facts and pick the quip once
+        const { round, reveal } = state.phase
+        const first = firstCorrectRef.current
+        const facts: RoundFacts = {
+          prompt: reveal.word,
+          outcome:
+            round.modifier === 'simul' || first === null ? 'unsolved' : first.isAi ? 'ai' : 'human',
+          solveMs: round.modifier === 'simul' ? null : (first?.atMs ?? null),
+          roundDurationMs: ROUND_DURATION_MS,
+          modifier: round.modifier,
+          aiWrongGuesses: [...aiWrongRef.current],
+          solverName: first && !first.isAi ? first.name : undefined,
+        }
+        factsRef.current.set(round.roundIndex, facts)
+        const q = roundQuip(facts, usedQuipIdsRef.current, (Math.random() * 2 ** 31) | 0)
+        usedQuipIdsRef.current.add(q.id)
+        setQuip(q.text)
+      }
       if (state.phase.name === 'round-end' && !archiveRef.current.has(state.phase.round.roundIndex)) {
         const { round, reveal } = state.phase
         if (round.modifier === 'simul') {
@@ -151,6 +184,9 @@ export default function Room() {
     }
     const onFeed = (entry: FeedEntry) => {
       setFeed((prev) => [entry, ...prev].slice(0, 60))
+      if (entry.kind === 'guess' && entry.isAi) aiWrongRef.current.push(entry.text)
+      if (entry.kind === 'correct' && firstCorrectRef.current === null)
+        firstCorrectRef.current = { isAi: entry.isAi, name: entry.name, atMs: entry.atMs }
       if (entry.kind === 'correct' && entry.playerId === s.id) setGotIt(true)
     }
     const onPrompt = (word: string) => setPrompt(word)
@@ -453,6 +489,7 @@ export default function Room() {
               isLast={meta.roundIndex + 1 >= meta.totalRounds}
               room={room}
               replay={archiveRef.current.get(roundEnd.round.roundIndex)?.strokes ?? null}
+              quip={quip}
             />
           )}
         </section>
@@ -464,6 +501,7 @@ export default function Room() {
           meId={playerId}
           onRestart={() => socket.emit('start-match')}
           recap={[...archiveRef.current.values()].sort((a, b) => a.roundIndex - b.roundIndex)}
+          facts={[...factsRef.current.entries()].sort((a, b) => a[0] - b[0]).map(([, f]) => f)}
         />
       )}
     </main>
@@ -686,12 +724,14 @@ function RoundEndPanel({
   isLast,
   room,
   replay,
+  quip,
 }: {
   reveal: RoundReveal
   nextAtMs: number
   isLast: boolean
   room: RoomState
   replay: NormPoint[][] | null
+  quip: string | null
 }) {
   const gains = room.players
     .map((p) => ({ ...p, gain: reveal.gains[p.id] ?? 0 }))
@@ -728,6 +768,7 @@ function RoundEndPanel({
       ) : (
         <p className="hand-note">nobody scored. brutal.</p>
       )}
+      {quip && <MachineQuip text={quip} />}
       {reveal.aiPickId && (
         <p className="hand-note">
           THE MACHINE backed {room.players.find((p) => p.id === reveal.aiPickId)?.name ?? '?'} (+40)
@@ -754,16 +795,29 @@ function MatchEnd({
   meId,
   onRestart,
   recap,
+  facts,
 }: {
   room: RoomState
   meId: string
   onRestart: () => void
   recap: ArchivedRound[]
+  facts: RoundFacts[]
 }) {
   const isHost = room.players.some((p) => p.id === meId && p.isHost)
   const humansWon = room.teamHumans > room.teamAi
   const tie = room.teamHumans === room.teamAi
   const sorted = [...room.players].sort((a, b) => b.score - a.score)
+  const [seed] = useState(() => (Math.random() * 2 ** 31) | 0)
+  const analysis = useMemo(
+    () =>
+      facts.length === 0
+        ? []
+        : matchRoast(
+            { mode: 'room', rounds: facts, teamHumans: room.teamHumans, teamAi: room.teamAi },
+            seed,
+          ),
+    [facts, room.teamHumans, room.teamAi, seed],
+  )
   return (
     <section className="room-summary">
       <p className="hand-note">final tally</p>
@@ -775,6 +829,7 @@ function MatchEnd({
         <span className="room-teams-vs">vs</span>
         <span className="room-teams-ai">{room.teamAi} AI</span>
       </p>
+      <MachineAnalysis lines={analysis} />
       {recap.length > 0 && (
         <ol className="room-recap" aria-label="round replays">
           {recap.map((r) => (

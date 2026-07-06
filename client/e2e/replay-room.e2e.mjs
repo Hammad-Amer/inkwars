@@ -21,10 +21,16 @@ try {
   assert((await a.locator('.room-panel .replay-canvas').count()) === 1, 'drawer sees the round replay')
   assert((await b.locator('.room-panel .replay-canvas').count()) === 1, 'guesser sees the round replay')
   assert(await animates(b, '.room-panel .replay-canvas'), 'guesser replay animates')
+  for (const [page, who] of [[a, 'drawer'], [b, 'guesser']]) {
+    const quip = await page.locator('.room-panel .machine-quip').textContent()
+    assert(quip !== null && quip.length > 10, `${who} sees a MACHINE quip at round end`)
+  }
   // nobody draws rounds 2-4; recap should hold exactly the one real drawing
   await a.waitForSelector('.room-summary', { timeout: 90_000 })
   assert((await a.locator('.room-summary .replay-canvas').count()) === 1, 'recap card only for the drawn round')
   assert(await animates(a, '.room-summary .replay-canvas'), 'recap replay animates')
+  const analysisLines = await a.locator('.room-summary .machine-analysis li').count()
+  assert(analysisLines >= 2 && analysisLines <= 4, 'match end shows a 2-4 line post-match analysis')
   console.log('replay-room e2e: PASS')
 } finally {
   await browser.close()
