@@ -59,9 +59,10 @@ matchRoast(facts: MatchFacts, seed: number): string[]   // 2–4 lines
 - **Rooms:** a `factsRef: Map<roundIndex, RoundFacts>` in `Room.tsx`, populated on
   entering `round-end` (mirrors Phase 5's `archiveRef` pattern, cleared the same way at
   `roundIndex === 0`). Wrong guesses = that round's `FeedEntry`s with `isAi && kind ===
-  'guess'`; outcome/solver from `RoundReveal` + gains. `simul` rounds get a dedicated
-  small facts shape (outcome by AI-recognized count) with their own quip lines — or, if
-  line count runs long, a single generic simul quip; either is acceptable.
+  'guess'`; outcome/solver from `RoundReveal` + gains. `simul` rounds map to the same
+  `RoundFacts` shape with `outcome: 'unsolved'` semantics ignored: they get a small set
+  of dedicated generic simul quips (keyed on `modifier === 'simul'`), no per-canvas
+  analysis — keeps the line bank focused.
 
 ### UI
 
