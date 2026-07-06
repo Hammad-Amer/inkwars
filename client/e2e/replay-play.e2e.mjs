@@ -23,6 +23,8 @@ try {
   await page.waitForSelector('.play-panel')
   assert((await page.locator('.play-panel .replay-canvas').count()) === 1, 'round-end panel shows a replay')
   assert(await animates(page, '.play-panel .replay-canvas'), 'round-end replay animates')
+  const quip = await page.locator('.play-panel .machine-quip').textContent()
+  assert(quip !== null && quip.length > 10, 'round-end panel shows a MACHINE quip')
   // rounds 2-5: give up without drawing — empty rounds get no replay canvas
   for (let round = 2; round <= 5; round++) {
     await page.click('text=Next round')
@@ -44,6 +46,8 @@ try {
     'recap shows a replay only for the drawn round',
   )
   assert(await animates(page, '.play-summary .replay-canvas'), 'recap replay animates')
+  const analysisLines = await page.locator('.play-summary .machine-analysis li').count()
+  assert(analysisLines >= 2 && analysisLines <= 4, 'summary shows a 2-4 line post-match analysis')
   console.log('replay-play e2e: PASS')
 } finally {
   await browser.close()

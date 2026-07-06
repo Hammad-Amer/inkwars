@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { MachineAnalysis, MachineQuip } from '../components/Commentary'
 import DrawingCanvas from '../components/DrawingCanvas'
 import GuessFeed, { type FeedEntry } from '../components/GuessFeed'
 import { MEMORY_HIDE_AFTER_MS, type NormPoint } from '../../../shared/protocol'
 import { ChaosBadge, ChaosBanner } from '../components/Chaos'
 import ReplayCanvas from '../components/ReplayCanvas'
 import { AiPlayer } from '../lib/aiPlayer'
+import { matchRoast, roundQuip, type RoundFacts } from '../lib/commentary'
 import { Guesser } from '../lib/guesser'
 import { isCanvasModifier, rollCanvasModifier, transformFor, type CanvasChaosModifier } from '../lib/chaos'
 import { pickMatchPrompts, TIER_POINTS, type Prompt } from '../lib/prompts'
@@ -23,6 +25,11 @@ interface RoundResult {
   guessedAtMs: number | null
   /** normalized final drawing, for the replay */
   strokes: NormPoint[][]
+  /** the AI's wrong guesses that round, for commentary */
+  aiWrongGuesses: string[]
+  modifier: CanvasChaosModifier | null
+  /** THE MACHINE's round-end quip, chosen when the round closes */
+  quip: string
 }
 
 type GamePhase =
@@ -73,6 +80,17 @@ function reducer(state: GameState, action: Action): GameState {
   }
 }
 
+function factsFor(r: Omit<RoundResult, 'quip'>): RoundFacts {
+  return {
+    prompt: r.prompt.name,
+    outcome: r.guessedAtMs === null ? 'unsolved' : 'ai',
+    solveMs: r.guessedAtMs,
+    roundDurationMs: ROUND_DURATION_MS,
+    modifier: r.modifier,
+    aiWrongGuesses: r.aiWrongGuesses,
+  }
+}
+
 function scoreFor(prompt: Prompt, guessedAtMs: number): number {
   const timeLeftFraction = Math.max(0, 1 - guessedAtMs / ROUND_DURATION_MS)
   // even a buzzer-beater is worth something; speed multiplies the rest
@@ -106,6 +124,8 @@ export default function Play() {
   const promptRef = useRef<Prompt | null>(null)
   const roundOpenRef = useRef(false)
   const feedIdRef = useRef(0)
+  const aiWrongRef = useRef<string[]>([])
+  const usedQuipIdsRef = useRef(new Set<string>())
   const chaosEnabledRef = useRef(chaosEnabled)
   chaosEnabledRef.current = chaosEnabled
   const modifierRef = useRef<CanvasChaosModifier | null>(null)
@@ -136,12 +156,17 @@ export default function Play() {
     const prompt = promptRef.current
     const canvas = playCanvasRef.current?.querySelector('canvas')
     const size = canvas?.getBoundingClientRect().width ?? 0
-    const result: RoundResult = {
+    const base: Omit<RoundResult, 'quip'> = {
       prompt,
       guessedAtMs,
       points: guessedAtMs === null ? 0 : scoreFor(prompt, guessedAtMs),
       strokes: size ? normalizeStrokes(latestStrokesRef.current, size) : [],
+      aiWrongGuesses: [...aiWrongRef.current],
+      modifier: modifierRef.current,
     }
+    const quip = roundQuip(factsFor(base), usedQuipIdsRef.current, (Math.random() * 2 ** 31) | 0)
+    usedQuipIdsRef.current.add(quip.id)
+    const result: RoundResult = { ...base, quip: quip.text }
     window.setTimeout(
       () => dispatch({ type: 'end-round', result }),
       guessedAtMs === null ? 0 : ROUND_END_LINGER_MS,
@@ -172,6 +197,7 @@ export default function Play() {
       setTimeLeftMs(ROUND_DURATION_MS)
       setClearToken((n) => n + 1)
       latestStrokesRef.current = []
+      aiWrongRef.current = []
 
       aiRef.current?.stop()
       const ai = new AiPlayer({
@@ -180,6 +206,7 @@ export default function Play() {
         onGuess: ({ category, confidence, atMs }) => {
           if (!roundOpenRef.current) return
           const correct = category === promptRef.current?.name
+          if (!correct) aiWrongRef.current.push(category)
           dispatch({
             type: 'ai-guess',
             entry: { id: feedIdRef.current++, category, confidence, atMs, correct },
@@ -235,6 +262,7 @@ export default function Play() {
     const guesser = guesserRef.current
     if (!guesser) return
     const prompts = pickMatchPrompts(guesser.manifest)
+    usedQuipIdsRef.current.clear()
     dispatch({ type: 'start-match', prompts })
     startRound(0, prompts)
   }
@@ -389,6 +417,7 @@ function RoundEndPanel({ result, onNext }: { result: RoundResult; onNext: () => 
           : ' — the AI never saw it.'}
       </p>
       <p className={`play-panel-points${guessed ? '' : ' is-zero'}`}>+{result.points} pts</p>
+      <MachineQuip text={result.quip} />
       <button onClick={onNext}>Next round</button>
     </div>
   )
@@ -404,6 +433,11 @@ function MatchSummary({
   onRestart: () => void
 }) {
   const guessedCount = results.filter((r) => r.guessedAtMs !== null).length
+  const [seed] = useState(() => (Math.random() * 2 ** 31) | 0)
+  const analysis = useMemo(
+    () => matchRoast({ mode: 'solo', rounds: results.map(factsFor), totalPoints: total }, seed),
+    [results, total, seed],
+  )
   return (
     <section className="play-summary">
       <p className="hand-note">final tally</p>
@@ -411,6 +445,7 @@ function MatchSummary({
       <p className="play-summary-sub">
         The AI recognized {guessedCount} of {results.length} drawings.
       </p>
+      <MachineAnalysis lines={analysis} />
       <ol className="play-recap">
         {results.map((r, i) => (
           <li key={i}>

@@ -1,0 +1,42 @@
+/* THE MACHINE's voice: system-log styling on team-AI blue */
+.machine-quip,
+.machine-analysis li {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--ai);
+  text-align: left;
+}
+
+.machine-quip {
+  margin: 0.9rem auto 0;
+  max-width: 46ch;
+}
+
+.machine-analysis {
+  margin: 2rem auto;
+  max-width: 62ch;
+  padding: 1rem 1.25rem;
+  border: var(--border);
+  border-color: var(--ai);
+  background: var(--paper-raised);
+  text-align: left;
+}
+
+.machine-analysis-title {
+  margin: 0 0 0.6rem;
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  font-stretch: expanded;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ai);
+}
+
+.machine-analysis ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.45rem;
+}
